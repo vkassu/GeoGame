@@ -1,0 +1,81 @@
+// Слой представления: переключение экранов и заполнение их данными.
+// Никакой игровой логики и state — только DOM.
+
+import { codeToEmoji } from "./data.js";
+
+export function showScreen(name) {
+  const screens = document.querySelectorAll(".screen");
+  for (const s of screens) {
+    s.classList.toggle("active", s.id === `${name}-screen`);
+  }
+}
+
+export function getStartButton() {
+  return document.getElementById("start-btn");
+}
+
+export function getPlayAgainButton() {
+  return document.getElementById("play-again-btn");
+}
+
+export function getDifficultyInputs() {
+  return document.querySelectorAll('input[name="difficulty"]');
+}
+
+export function setSelectedDifficulty(value) {
+  const input = document.querySelector(`input[name="difficulty"][value="${value}"]`);
+  if (input) input.checked = true;
+}
+
+export function renderBestScore(n) {
+  document.getElementById("best-score").textContent = String(n);
+}
+
+export function renderGamesPlayed(n) {
+  document.getElementById("games-played").textContent = String(n);
+}
+
+export function setStartButtonReady(ready) {
+  const btn = getStartButton();
+  btn.disabled = !ready;
+  btn.textContent = ready ? "Начать" : "Загрузка…";
+}
+
+export function renderQuestion({ country, options, questionNumber, total, score }) {
+  const flagEl = document.getElementById("flag-big");
+  flagEl.innerHTML = "";
+  const svg = country.flags && country.flags.svg;
+  if (svg) {
+    const img = document.createElement("img");
+    img.src = svg;
+    img.alt = country.cca2 || "";
+    flagEl.appendChild(img);
+  } else {
+    flagEl.textContent = codeToEmoji(country.cca2);
+  }
+
+  document.getElementById("q-counter").textContent = `Вопрос ${questionNumber} из ${total}`;
+  document.getElementById("q-score").textContent = `Счёт: ${score}`;
+  document.getElementById("progress-bar").style.width = `${(questionNumber / total) * 100}%`;
+
+  const optsEl = document.getElementById("options");
+  optsEl.innerHTML = "";
+  const buttons = [];
+  for (const cap of options) {
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.textContent = cap;
+    optsEl.appendChild(btn);
+    buttons.push({ button: btn, capital: cap });
+  }
+  return buttons;
+}
+
+export function markAnswer(btn, kind) {
+  btn.classList.add(kind === "correct" ? "correct" : "wrong");
+}
+
+export function renderResult(score, total) {
+  document.getElementById("result-text").textContent =
+    `Ты ответил правильно ${score} из ${total}`;
+}

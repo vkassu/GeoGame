@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Список стран — restcountries.com</title>
+  <style>
+    body {
+      font-family: system-ui, "Segoe UI", Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f4f6f8;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    #status { margin: 8px 0 16px; color: #555; }
+    #status.error { color: #c0392b; font-weight: bold; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    }
+    th, td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e3e6e8;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #2c3e50;
+      color: #fff;
+      font-weight: 600;
+    }
+    tr:hover td { background: #eef3f7; }
+    .flag { font-size: 22px; }
+    .flag img { width: 32px; height: auto; vertical-align: middle; display: block; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <h1>Страны мира</h1>
+  <div id="status">Загрузка данных с restcountries.com…</div>
+  <table id="table" hidden>
+    <thead>
+      <tr>
+        <th>Флаг</th>
+        <th>Название</th>
+        <th>Столица</th>
+        <th class="num">Население</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <script>
+    "use strict";
+
+    // restcountries v3.1 требует параметр fields, иначе вернёт 400.
+    const API_URL = "https://restcountries.com/v3.1/all?fields=name,translations,capital,population,flags,cca2";
+
+    const statusEl = document.getElementById("status");
+    const tableEl = document.getElementById("table");
+    const tbodyEl = document.getElementById("tbody");
+
+    // cca2 -> эмодзи-флаг (на случай, если flags.svg недоступен)
+    function codeToEmoji(cca2) {
+      if (!cca2 || cca2.length !== 2) return "🏳️";
+      const base = 0x1F1E6;
+      const A = "A".charCodeAt(0);
+      return String.fromCodePoint(
+        base + cca2.charCodeAt(0) - A,
+        base + cca2.charCodeAt(1) - A
+      );
+    }
+
+    function ruName(country) {
+      const rus = country.translations
+        && country.translations.rus
+        && country.translations.rus.common;
+      if (rus) return rus;
+      return (country.name && country.name.common) || "—";
+    }
+
+    function engName(country) {
+      return (country.name && country.name.common) || "";
+    }
+
+    function capital(country) {
+      return Array.isArray(country.capital) && country.capital.length
+        ? country.capital.join(", ")
+        : "—";
+    }
+
+    function population(country) {
+      const n = country.population;
+      return typeof n === "number" ? n.toLocaleString("ru-RU") : "—";
+    }
+
+    function flagCell(country) {
+      const td = document.createElement("td");
+      td.className = "flag";
+      const svg = country.flags && country.flags.svg;
+      if (svg) {
+        const img = document.createElement("img");
+        img.src = svg;
+        img.alt = country.cca2 || "";
+        img.loading = "lazy";
+        td.appendChild(img);
+      } else {
+        td.textContent = codeToEmoji(country.cca2);
+      }
+      return td;
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status + " " + res.statusText);
+        }
+        const data = await res.json();
+
+        data.sort((a, b) =>
+          engName(a).localeCompare(engName(b), "en")
+        );
+
+        const frag = document.createDocumentFragment();
+        for (const country of data) {
+          const tr = document.createElement("tr");
+
+          tr.appendChild(flagCell(country));
+
+          const nameTd = document.createElement("td");
+          nameTd.textContent = ruName(country);
+          tr.appendChild(nameTd);
+
+          const capTd = document.createElement("td");
+          capTd.textContent = capital(country);
+          tr.appendChild(capTd);
+
+          const popTd = document.createElement("td");
+          popTd.className = "num";
+          popTd.textContent = population(country);
+          tr.appendChild(popTd);
+
+          frag.appendChild(tr);
+        }
+        tbodyEl.appendChild(frag);
+
+        statusEl.textContent = "Загружено стран: " + data.length;
+        tableEl.hidden = false;
+      } catch (err) {
+        statusEl.className = "error";
+        statusEl.textContent = "Ошибка загрузки: " + err.message;
+        console.error(err);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

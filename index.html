@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoGame — викторина по географии</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1>GeoGame</h1>
+  <div id="status">Загрузка данных с restcountries.com…</div>
+
+  <main id="game">
+    <section id="start-screen" class="screen active">
+      <h2>Угадай столицу страны</h2>
+      <p class="subtitle">По флагу определи страну и выбери её столицу.</p>
+      <p class="record">Рекорд: <span id="best-score">0</span></p>
+
+      <div class="difficulty" role="radiogroup" aria-label="Сложность">
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="easy">
+          <span class="diff-name">Лёгкая</span>
+          <small>5 вопросов</small>
+        </label>
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="medium" checked>
+          <span class="diff-name">Средняя</span>
+          <small>10 вопросов</small>
+        </label>
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="hard">
+          <span class="diff-name">Сложная</span>
+          <small>15 вопросов</small>
+        </label>
+      </div>
+
+      <button id="start-btn" class="primary-btn" disabled>Загрузка…</button>
+    </section>
+
+    <section id="game-screen" class="screen">
+      <div class="meta">
+        <span id="q-counter">Вопрос 1 из 10</span>
+        <span id="q-score">Счёт: 0</span>
+      </div>
+      <div class="progress" aria-hidden="true">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="flag-big" id="flag-big"></div>
+      <h2 class="question-text">Какая столица этой страны?</h2>
+      <div class="options" id="options"></div>
+    </section>
+
+    <section id="result-screen" class="screen">
+      <h2>Игра окончена</h2>
+      <p class="result-text" id="result-text"></p>
+      <p class="games-played">Партий сыграно: <span id="games-played">0</span></p>
+      <button id="play-again-btn" class="primary-btn">Играть снова</button>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
