@@ -25,6 +25,24 @@ export function getHomeButton() {
   return document.getElementById("home-btn");
 }
 
+export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
+  const banner = document.getElementById("answer-banner");
+  banner.className = "answer-banner " + (isCorrect ? "correct" : "wrong");
+  banner.textContent = isCorrect ? "Правильный ответ" : "Неправильный ответ";
+
+  document.getElementById("answer-xp").textContent = isCorrect ? "+10 XP" : "";
+  document.getElementById("answer-picked").textContent = isCorrect ? "" : `Ваш ответ: ${pickedValue}`;
+  document.getElementById("answer-correct-val").textContent = correctValue;
+}
+export function showAnswerResult() {
+  document.getElementById("options").hidden = true;
+  document.getElementById("answer-result").hidden = false;
+}
+export function hideAnswerResult() {
+  document.getElementById("answer-result").hidden = true;
+  document.getElementById("options").hidden = false;
+}
+
 export function getDifficultyInputs() {
   return document.querySelectorAll('input[name="difficulty"]');
 }

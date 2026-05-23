@@ -11,6 +11,9 @@ import {
   setSelectedMode,
   setModeText,
   getHomeButton,
+  renderAnswerResult,
+  showAnswerResult,
+  hideAnswerResult,
   setStartButtonReady,
   renderQuestion,
   markAnswer,
@@ -21,7 +24,6 @@ import {
 
 const QUESTIONS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 15 };
 const OPTIONS_PER_QUESTION = 4;
-const NEXT_DELAY_MS = 1000;
 
 // Режимы игры.
 //   prompt   — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
@@ -141,6 +143,7 @@ function startGame() {
 }
 
 function showQuestion(index) {
+  hideAnswerResult();
   const mode = MODES[state.mode];
   const country = state.questions[index];
   const correct = mode.answer(country);
@@ -175,15 +178,19 @@ function handleAnswer(picked, allButtons, correct) {
     if (correctEntry) markAnswer(correctEntry.button, "correct");
   }
 
-  setTimeout(() => {
-    state.currentQuestion++;
-    if (state.currentQuestion >= state.questions.length) {
-      endGame();
-    } else {
-      document.getElementById("q-score").textContent = `Счёт: ${state.score}`;
-      showQuestion(state.currentQuestion);
-    }
-  }, NEXT_DELAY_MS);
+  renderAnswerResult(isCorrect, picked.value, correct);
+  showAnswerResult();
+}
+
+function onAnswerResultClick() {
+  hideAnswerResult();
+  state.currentQuestion++;
+  if (state.currentQuestion >= state.questions.length) {
+    endGame();
+  } else {
+    document.getElementById("q-score").textContent = `Счёт: ${state.score}`;
+    showQuestion(state.currentQuestion);
+  }
 }
 
 function endGame() {
@@ -229,6 +236,7 @@ async function init() {
   getStartButton().addEventListener("click", startGame);
   getPlayAgainButton().addEventListener("click", goToStart);
   getHomeButton().addEventListener("click", goHome);
+  document.getElementById("answer-result").addEventListener("click", onAnswerResultClick);
   for (const input of getDifficultyInputs()) {
     input.addEventListener("change", () => selectDifficulty(input.value));
   }

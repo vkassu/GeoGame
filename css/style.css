@@ -195,6 +195,31 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   color: #6b1f17;
 }
 
+.answer-result {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: center;
+}
+.answer-banner {
+  padding: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #fff;
+}
+.answer-banner.correct { background: #2a9d2a; }
+.answer-banner.wrong   { background: #c0392b; }
+.answer-body {
+  background: #fff;
+  padding: 16px 12px 10px;
+  color: #111;
+}
+.answer-xp   { font-size: 1rem; color: #2a7a2a; margin-bottom: 6px; }
+.answer-picked { font-size: 0.95rem; color: #888; margin-bottom: 4px; }
+.answer-correct-val { font-size: 1.3rem; font-weight: bold; margin-bottom: 8px; }
+.answer-hint { font-size: 0.8rem; color: #aaa; }
+
 .primary-btn {
   padding: 12px 28px;
   background: #2c3e50;
