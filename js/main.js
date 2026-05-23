@@ -1,12 +1,15 @@
 // Точка входа: игровая логика, state и единственное место работы с localStorage.
 
-import { fetchCountries, hasCapital, capitalName } from "./data.js";
+import { fetchCountries, hasCapital, capitalName, ruName } from "./data.js";
 import {
   showScreen,
   getStartButton,
   getPlayAgainButton,
   getDifficultyInputs,
   setSelectedDifficulty,
+  getModeInputs,
+  setSelectedMode,
+  setModeText,
   setStartButtonReady,
   renderQuestion,
   markAnswer,
@@ -19,17 +22,40 @@ const QUESTIONS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 15 };
 const OPTIONS_PER_QUESTION = 4;
 const NEXT_DELAY_MS = 1000;
 
+// Режимы игры. answer — что является правильным ответом, valid — фильтр стран.
+const MODES = {
+  country: {
+    startTitle: "Угадай страну по флагу",
+    subtitle: "По флагу определи, что это за страна.",
+    question: "Что это за страна?",
+    answer: ruName,
+    valid: () => true,
+  },
+  capital: {
+    startTitle: "Угадай столицу страны",
+    subtitle: "По флагу определи страну и выбери её столицу.",
+    question: "Какая столица этой страны?",
+    answer: capitalName,
+    valid: hasCapital,
+  },
+};
+const DEFAULT_MODE = "country";
+
 const STORAGE = {
-  bestScore: "geogame:bestScore",
   difficulty: "geogame:difficulty",
   gamesPlayed: "geogame:gamesPlayed",
+  mode: "geogame:mode",
+  // Рекорд хранится отдельно для каждого режима: geogame:bestScore:<mode>
+  bestScoreFor: (mode) => `geogame:bestScore:${mode}`,
 };
 
 const state = {
   screen: "start",
   difficulty: "medium",
+  mode: DEFAULT_MODE,
   bestScore: 0,
   gamesPlayed: 0,
+  allCountries: [],
   countries: [],
   questions: [],
   currentQuestion: 0,
@@ -37,17 +63,33 @@ const state = {
   isGameOver: false,
 };
 
+function loadBestScore(mode) {
+  return Number(localStorage.getItem(STORAGE.bestScoreFor(mode))) || 0;
+}
+
 function loadFromStorage() {
-  state.bestScore = Number(localStorage.getItem(STORAGE.bestScore)) || 0;
   state.gamesPlayed = Number(localStorage.getItem(STORAGE.gamesPlayed)) || 0;
   const savedDiff = localStorage.getItem(STORAGE.difficulty);
   state.difficulty = QUESTIONS_BY_DIFFICULTY[savedDiff] ? savedDiff : "medium";
+  const savedMode = localStorage.getItem(STORAGE.mode);
+  state.mode = MODES[savedMode] ? savedMode : DEFAULT_MODE;
+  state.bestScore = loadBestScore(state.mode);
 }
 
 function selectDifficulty(value) {
   if (!QUESTIONS_BY_DIFFICULTY[value]) return;
   state.difficulty = value;
   localStorage.setItem(STORAGE.difficulty, value);
+}
+
+function selectMode(value) {
+  if (!MODES[value]) return;
+  state.mode = value;
+  localStorage.setItem(STORAGE.mode, value);
+  state.bestScore = loadBestScore(value);
+  renderBestScore(state.bestScore);
+  const mode = MODES[value];
+  setModeText(mode.startTitle, mode.subtitle);
 }
 
 function shuffle(arr) {
@@ -63,17 +105,18 @@ function sample(arr, n) {
   return shuffle(arr).slice(0, n);
 }
 
-function buildOptions(correctCountry) {
-  const correct = capitalName(correctCountry);
+function buildOptions(correctCountry, answer) {
+  const correct = answer(correctCountry);
   const pool = state.countries.filter(
-    (c) => c !== correctCountry && capitalName(c) !== correct
+    (c) => c !== correctCountry && answer(c) !== correct
   );
-  const wrong = sample(pool, OPTIONS_PER_QUESTION - 1).map(capitalName);
+  const wrong = sample(pool, OPTIONS_PER_QUESTION - 1).map(answer);
   return shuffle([correct, ...wrong]);
 }
 
 function startGame() {
   const total = QUESTIONS_BY_DIFFICULTY[state.difficulty];
+  state.countries = state.allCountries.filter(MODES[state.mode].valid);
   state.questions = sample(state.countries, total);
   state.currentQuestion = 0;
   state.score = 0;
@@ -84,9 +127,10 @@ function startGame() {
 }
 
 function showQuestion(index) {
+  const mode = MODES[state.mode];
   const country = state.questions[index];
-  const correct = capitalName(country);
-  const options = buildOptions(country);
+  const correct = mode.answer(country);
+  const options = buildOptions(country, mode.answer);
 
   const buttons = renderQuestion({
     country,
@@ -94,6 +138,7 @@ function showQuestion(index) {
     questionNumber: index + 1,
     total: state.questions.length,
     score: state.score,
+    questionText: mode.question,
   });
 
   for (const entry of buttons) {
@@ -104,7 +149,7 @@ function showQuestion(index) {
 }
 
 function handleAnswer(picked, allButtons, correct) {
-  const isCorrect = picked.capital === correct;
+  const isCorrect = picked.value === correct;
   if (isCorrect) state.score++;
 
   for (const { button } of allButtons) {
@@ -112,7 +157,7 @@ function handleAnswer(picked, allButtons, correct) {
   }
   markAnswer(picked.button, isCorrect ? "correct" : "wrong");
   if (!isCorrect) {
-    const correctEntry = allButtons.find((e) => e.capital === correct);
+    const correctEntry = allButtons.find((e) => e.value === correct);
     if (correctEntry) markAnswer(correctEntry.button, "correct");
   }
 
@@ -135,7 +180,7 @@ function endGame() {
 
   if (state.score > state.bestScore) {
     state.bestScore = state.score;
-    localStorage.setItem(STORAGE.bestScore, String(state.bestScore));
+    localStorage.setItem(STORAGE.bestScoreFor(state.mode), String(state.bestScore));
     renderBestScore(state.bestScore);
   }
 
@@ -156,17 +201,22 @@ async function init() {
   loadFromStorage();
   renderBestScore(state.bestScore);
   setSelectedDifficulty(state.difficulty);
+  setSelectedMode(state.mode);
+  setModeText(MODES[state.mode].startTitle, MODES[state.mode].subtitle);
 
   getStartButton().addEventListener("click", startGame);
   getPlayAgainButton().addEventListener("click", goToStart);
   for (const input of getDifficultyInputs()) {
     input.addEventListener("change", () => selectDifficulty(input.value));
   }
+  for (const input of getModeInputs()) {
+    input.addEventListener("change", () => selectMode(input.value));
+  }
 
   try {
     const all = await fetchCountries();
-    state.countries = all.filter(hasCapital);
-    statusEl.textContent = `Загружено стран: ${state.countries.length}`;
+    state.allCountries = all;
+    statusEl.textContent = `Загружено стран: ${all.length}`;
     setStartButtonReady(true);
   } catch (err) {
     statusEl.className = "error";

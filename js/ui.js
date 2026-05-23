@@ -27,6 +27,20 @@ export function setSelectedDifficulty(value) {
   if (input) input.checked = true;
 }
 
+export function getModeInputs() {
+  return document.querySelectorAll('input[name="mode"]');
+}
+
+export function setSelectedMode(value) {
+  const input = document.querySelector(`input[name="mode"][value="${value}"]`);
+  if (input) input.checked = true;
+}
+
+export function setModeText(title, subtitle) {
+  document.getElementById("start-title").textContent = title;
+  document.getElementById("start-subtitle").textContent = subtitle;
+}
+
 export function renderBestScore(n) {
   document.getElementById("best-score").textContent = String(n);
 }
@@ -41,7 +55,11 @@ export function setStartButtonReady(ready) {
   btn.textContent = ready ? "Начать" : "Загрузка…";
 }
 
-export function renderQuestion({ country, options, questionNumber, total, score }) {
+export function renderQuestion({ country, options, questionNumber, total, score, questionText }) {
+  if (questionText) {
+    document.querySelector(".question-text").textContent = questionText;
+  }
+
   const flagEl = document.getElementById("flag-big");
   flagEl.innerHTML = "";
   const svg = country.flags && country.flags.svg;
@@ -66,7 +84,7 @@ export function renderQuestion({ country, options, questionNumber, total, score 
     btn.className = "option-btn";
     btn.textContent = cap;
     optsEl.appendChild(btn);
-    buttons.push({ button: btn, capital: cap });
+    buttons.push({ button: btn, value: cap });
   }
   return buttons;
 }

@@ -12,9 +12,22 @@
 
   <main id="game">
     <section id="start-screen" class="screen active">
-      <h2>Угадай столицу страны</h2>
-      <p class="subtitle">По флагу определи страну и выбери её столицу.</p>
+      <h2 id="start-title">Угадай страну по флагу</h2>
+      <p class="subtitle" id="start-subtitle">По флагу определи, что это за страна.</p>
       <p class="record">Рекорд: <span id="best-score">0</span></p>
+
+      <div class="mode" role="radiogroup" aria-label="Режим игры">
+        <label class="mode-option">
+          <input type="radio" name="mode" value="country" checked>
+          <span class="mode-name">Страна</span>
+          <small>по флагу</small>
+        </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="capital">
+          <span class="mode-name">Столица</span>
+          <small>по флагу</small>
+        </label>
+      </div>
 
       <div class="difficulty" role="radiogroup" aria-label="Сложность">
         <label class="diff-option">

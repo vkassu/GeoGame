@@ -34,6 +34,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   color: #555;
 }
 
+.mode,
 .difficulty {
   display: flex;
   gap: 10px;
@@ -41,6 +42,28 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   margin: 20px 0 28px;
   flex-wrap: wrap;
 }
+.mode { margin-bottom: 12px; }
+
+.mode-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 18px;
+  border: 2px solid #d0d7de;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 110px;
+  transition: border-color .15s, background .15s;
+  background: #fff;
+}
+.mode-option input { position: absolute; opacity: 0; pointer-events: none; }
+.mode-option:hover { border-color: #aab4be; background: #f7f9fb; }
+.mode-option:has(input:checked) {
+  border-color: #2c3e50;
+  background: #eef3f7;
+}
+.mode-name { font-weight: 600; font-size: 15px; }
+.mode-option small { color: #666; margin-top: 2px; font-size: 12px; }
 .diff-option {
   display: flex;
   flex-direction: column;

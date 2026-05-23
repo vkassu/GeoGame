@@ -14,7 +14,14 @@
       "Bash(curl -s -o NUL -w \"HTTP %{http_code} size=%{size_download}\\\\n\" http://localhost:5000/js/data.js)",
       "Bash(curl -s -o NUL -w \"HTTP %{http_code} size=%{size_download}\\\\n\" http://localhost:5000/css/style.css)",
       "Bash(curl *)",
-      "Bash(dir)"
+      "Bash(dir)",
+      "Bash(gh auth *)",
+      "Bash(echo \"---exit:$?\")",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
