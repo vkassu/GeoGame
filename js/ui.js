@@ -35,12 +35,12 @@ export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
   document.getElementById("answer-correct-val").textContent = correctValue;
 }
 export function showAnswerResult() {
-  document.getElementById("options").hidden = true;
-  document.getElementById("answer-result").hidden = false;
+  document.getElementById("options").style.display = "none";
+  document.getElementById("answer-result").style.display = "block";
 }
 export function hideAnswerResult() {
-  document.getElementById("answer-result").hidden = true;
-  document.getElementById("options").hidden = false;
+  document.getElementById("answer-result").style.display = "none";
+  document.getElementById("options").style.display = "";
 }
 
 export function getDifficultyInputs() {
