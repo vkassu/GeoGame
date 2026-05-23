@@ -2,8 +2,50 @@ body {
   font-family: system-ui, "Segoe UI", Arial, sans-serif;
   margin: 0;
   padding: 24px;
-  background: #f4f6f8;
-  color: #1a1a1a;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background: linear-gradient(to bottom, #0a0a1a, #1a1a2e);
+  color: #e8eaf0;
+}
+
+/* Звёзды — разбросаны по верхней половине */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8vw 12vh, rgba(255,255,255,.7), transparent),
+    radial-gradient(1px 1px at 22vw 6vh, rgba(255,255,255,.5), transparent),
+    radial-gradient(2px 2px at 35vw 18vh, rgba(255,255,255,.6), transparent),
+    radial-gradient(1px 1px at 48vw 9vh, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.5px 1.5px at 61vw 22vh, rgba(255,255,255,.65), transparent),
+    radial-gradient(1px 1px at 73vw 5vh, rgba(255,255,255,.5), transparent),
+    radial-gradient(2px 2px at 86vw 15vh, rgba(255,255,255,.6), transparent),
+    radial-gradient(1px 1px at 93vw 28vh, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.5px 1.5px at 15vw 33vh, rgba(255,255,255,.55), transparent),
+    radial-gradient(1px 1px at 42vw 38vh, rgba(255,255,255,.45), transparent),
+    radial-gradient(1.5px 1.5px at 68vw 35vh, rgba(255,255,255,.55), transparent),
+    radial-gradient(1px 1px at 80vw 40vh, rgba(255,255,255,.45), transparent);
+}
+
+/* Полукруг планеты Земля снизу */
+body::after {
+  content: "";
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 120vw;
+  height: 40vw;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 32%, #1f4a5c 0%, #163d50 45%, #0d1b2a 75%);
+  box-shadow: 0 0 80px rgba(40,110,120,.35), inset 0 6px 40px rgba(120,220,200,.12);
 }
 .topbar {
   position: relative;
@@ -31,7 +73,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 .home-btn:hover { border-color: #aab4be; background: #f7f9fb; }
 .home-btn[hidden] { display: none; }
-#status { margin: 8px 0 16px; color: #555; text-align: center; font-size: 14px; }
+#status { margin: 8px 0 16px; color: #9aa3b8; text-align: center; font-size: 14px; }
 #status.error { color: #c0392b; font-weight: bold; }
 
 #game { max-width: 640px; margin: 16px auto; }
@@ -174,23 +216,26 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
   margin-top: 8px;
 }
 .option-btn {
-  padding: 14px 12px;
-  background: #f0f3f6;
-  border: 2px solid #d0d7de;
-  border-radius: 6px;
-  font-size: 15px;
+  min-height: 80px;
+  padding: 10px 16px;
+  background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+  border: 2px solid #b0bec5;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+  color: #fff;
+  font-weight: bold;
+  font-size: 18px;
+  white-space: normal;
   cursor: pointer;
-  transition: background .15s, border-color .15s, color .15s;
   font-family: inherit;
+  transition: filter .15s, transform .1s;
 }
-.option-btn:hover:not(:disabled) {
-  background: #e2e8ee;
-  border-color: #aab4be;
-}
+.option-btn:hover:not(:disabled) { filter: brightness(1.15); }
+.option-btn:active:not(:disabled) { filter: brightness(0.9); transform: scale(0.98); }
 .option-btn:disabled { cursor: default; }
 .option-btn.correct {
   background: #d6f5d6;
