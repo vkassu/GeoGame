@@ -14,6 +14,7 @@ import {
   renderAnswerResult,
   showAnswerResult,
   hideAnswerResult,
+  updateTimer,
   setStartButtonReady,
   renderQuestion,
   markAnswer,
@@ -24,6 +25,7 @@ import {
 
 const QUESTIONS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 15 };
 const OPTIONS_PER_QUESTION = 4;
+const QUESTION_TIME_SEC = 30;
 
 // Режимы игры.
 //   prompt   — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
@@ -77,6 +79,7 @@ const state = {
   currentQuestion: 0,
   score: 0,
   isGameOver: false,
+  timerId: null,
 };
 
 function loadBestScore(mode) {
@@ -142,8 +145,35 @@ function startGame() {
   showQuestion(0);
 }
 
+function startTimer() {
+  clearTimer();
+  let seconds = QUESTION_TIME_SEC;
+  updateTimer(seconds);
+  state.timerId = setInterval(() => {
+    seconds--;
+    updateTimer(seconds);
+    if (seconds <= 0) {
+      clearTimer();
+      // Время вышло — неверный ответ, правильный — пустая строка (ни одна кнопка не совпадёт)
+      const mode = MODES[state.mode];
+      const country = state.questions[state.currentQuestion];
+      const correct = mode.answer(country);
+      renderAnswerResult(false, "—", correct);
+      showAnswerResult();
+    }
+  }, 1000);
+}
+
+function clearTimer() {
+  if (state.timerId) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+}
+
 function showQuestion(index) {
   hideAnswerResult();
+  startTimer();
   const mode = MODES[state.mode];
   const country = state.questions[index];
   const correct = mode.answer(country);
@@ -166,6 +196,7 @@ function showQuestion(index) {
 }
 
 function handleAnswer(picked, allButtons, correct) {
+  clearTimer();
   const isCorrect = picked.value === correct;
   if (isCorrect) state.score++;
 
@@ -183,6 +214,7 @@ function handleAnswer(picked, allButtons, correct) {
 }
 
 function onAnswerResultClick() {
+  clearTimer();
   hideAnswerResult();
   state.currentQuestion++;
   if (state.currentQuestion >= state.questions.length) {
@@ -194,6 +226,7 @@ function onAnswerResultClick() {
 }
 
 function endGame() {
+  clearTimer();
   state.isGameOver = true;
 
   state.gamesPlayed += 1;

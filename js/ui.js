@@ -66,6 +66,13 @@ export function setModeText(title, subtitle) {
   document.getElementById("start-subtitle").textContent = subtitle;
 }
 
+export function updateTimer(seconds) {
+  const el = document.getElementById("q-timer");
+  if (!el) return;
+  el.textContent = "⏱ " + seconds;
+  el.className = "q-timer" + (seconds <= 5 ? " danger" : seconds <= 10 ? " warning" : "");
+}
+
 export function renderBestScore(n) {
   document.getElementById("best-score").textContent = String(n);
 }
