@@ -8,6 +8,9 @@ export function showScreen(name) {
   for (const s of screens) {
     s.classList.toggle("active", s.id === `${name}-screen`);
   }
+  // Кнопка «На главную» видна на всех экранах, кроме стартового.
+  const home = getHomeButton();
+  if (home) home.hidden = name === "start";
 }
 
 export function getStartButton() {
@@ -16,6 +19,10 @@ export function getStartButton() {
 
 export function getPlayAgainButton() {
   return document.getElementById("play-again-btn");
+}
+
+export function getHomeButton() {
+  return document.getElementById("home-btn");
 }
 
 export function getDifficultyInputs() {
@@ -55,21 +62,28 @@ export function setStartButtonReady(ready) {
   btn.textContent = ready ? "Начать" : "Загрузка…";
 }
 
-export function renderQuestion({ country, options, questionNumber, total, score, questionText }) {
+export function renderQuestion({ prompt, options, questionNumber, total, score, questionText }) {
   if (questionText) {
     document.querySelector(".question-text").textContent = questionText;
   }
 
   const flagEl = document.getElementById("flag-big");
   flagEl.innerHTML = "";
-  const svg = country.flags && country.flags.svg;
-  if (svg) {
-    const img = document.createElement("img");
-    img.src = svg;
-    img.alt = country.cca2 || "";
-    flagEl.appendChild(img);
+  if (prompt.type === "text") {
+    flagEl.classList.add("text-prompt");
+    flagEl.textContent = prompt.text;
   } else {
-    flagEl.textContent = codeToEmoji(country.cca2);
+    flagEl.classList.remove("text-prompt");
+    const country = prompt.country;
+    const svg = country.flags && country.flags.svg;
+    if (svg) {
+      const img = document.createElement("img");
+      img.src = svg;
+      img.alt = country.cca2 || "";
+      flagEl.appendChild(img);
+    } else {
+      flagEl.textContent = codeToEmoji(country.cca2);
+    }
   }
 
   document.getElementById("q-counter").textContent = `Вопрос ${questionNumber} из ${total}`;

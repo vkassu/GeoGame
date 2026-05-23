@@ -7,7 +7,10 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>GeoGame</h1>
+  <header class="topbar">
+    <button id="home-btn" class="home-btn" hidden>← На главную</button>
+    <h1>GeoGame</h1>
+  </header>
   <div id="status">Загрузка данных с restcountries.com…</div>
 
   <main id="game">
@@ -16,7 +19,8 @@
       <p class="subtitle" id="start-subtitle">По флагу определи, что это за страна.</p>
       <p class="record">Рекорд: <span id="best-score">0</span></p>
 
-      <div class="mode" role="radiogroup" aria-label="Режим игры">
+      <h3 class="group-title" id="mode-title">Выбор режима</h3>
+      <div class="mode" role="radiogroup" aria-labelledby="mode-title">
         <label class="mode-option">
           <input type="radio" name="mode" value="country" checked>
           <span class="mode-name">Страна</span>
@@ -27,9 +31,15 @@
           <span class="mode-name">Столица</span>
           <small>по флагу</small>
         </label>
+        <label class="mode-option">
+          <input type="radio" name="mode" value="countryByCapital">
+          <span class="mode-name">Страна</span>
+          <small>по столице</small>
+        </label>
       </div>
 
-      <div class="difficulty" role="radiogroup" aria-label="Сложность">
+      <h3 class="group-title" id="difficulty-title">Выбор сложности</h3>
+      <div class="difficulty" role="radiogroup" aria-labelledby="difficulty-title">
         <label class="diff-option">
           <input type="radio" name="difficulty" value="easy">
           <span class="diff-name">Лёгкая</span>

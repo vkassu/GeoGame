@@ -10,6 +10,7 @@ import {
   getModeInputs,
   setSelectedMode,
   setModeText,
+  getHomeButton,
   setStartButtonReady,
   renderQuestion,
   markAnswer,
@@ -22,12 +23,16 @@ const QUESTIONS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 15 };
 const OPTIONS_PER_QUESTION = 4;
 const NEXT_DELAY_MS = 1000;
 
-// Режимы игры. answer — что является правильным ответом, valid — фильтр стран.
+// Режимы игры.
+//   prompt   — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
+//   answer   — функция, возвращающая правильный ответ (и текст вариантов)
+//   valid    — фильтр стран, пригодных для режима
 const MODES = {
   country: {
     startTitle: "Угадай страну по флагу",
     subtitle: "По флагу определи, что это за страна.",
     question: "Что это за страна?",
+    prompt: (c) => ({ type: "flag", country: c }),
     answer: ruName,
     valid: () => true,
   },
@@ -35,7 +40,16 @@ const MODES = {
     startTitle: "Угадай столицу страны",
     subtitle: "По флагу определи страну и выбери её столицу.",
     question: "Какая столица этой страны?",
+    prompt: (c) => ({ type: "flag", country: c }),
     answer: capitalName,
+    valid: hasCapital,
+  },
+  countryByCapital: {
+    startTitle: "Угадай страну по столице",
+    subtitle: "По названию столицы определи страну.",
+    question: "Столицей какой страны является этот город?",
+    prompt: (c) => ({ type: "text", text: capitalName(c) }),
+    answer: ruName,
     valid: hasCapital,
   },
 };
@@ -133,7 +147,7 @@ function showQuestion(index) {
   const options = buildOptions(country, mode.answer);
 
   const buttons = renderQuestion({
-    country,
+    prompt: mode.prompt(country),
     options,
     questionNumber: index + 1,
     total: state.questions.length,
@@ -195,6 +209,14 @@ function goToStart() {
   showScreen(state.screen);
 }
 
+// Возврат на главную. Если партия идёт — спрашиваем подтверждение.
+function goHome() {
+  if (state.screen === "game" && !state.isGameOver) {
+    if (!confirm("Прервать текущую партию и вернуться на главную?")) return;
+  }
+  goToStart();
+}
+
 async function init() {
   const statusEl = document.getElementById("status");
 
@@ -206,6 +228,7 @@ async function init() {
 
   getStartButton().addEventListener("click", startGame);
   getPlayAgainButton().addEventListener("click", goToStart);
+  getHomeButton().addEventListener("click", goHome);
   for (const input of getDifficultyInputs()) {
     input.addEventListener("change", () => selectDifficulty(input.value));
   }
