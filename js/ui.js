@@ -36,11 +36,15 @@ export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
 }
 export function showAnswerResult() {
   document.getElementById("options").style.display = "none";
+  document.querySelector(".meta").style.display = "none";
+  document.querySelector(".progress").style.display = "none";
   document.getElementById("answer-result").style.display = "block";
 }
 export function hideAnswerResult() {
   document.getElementById("answer-result").style.display = "none";
   document.getElementById("options").style.display = "";
+  document.querySelector(".meta").style.display = "";
+  document.querySelector(".progress").style.display = "";
 }
 
 export function getDifficultyInputs() {

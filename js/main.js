@@ -270,6 +270,18 @@ async function init() {
   getPlayAgainButton().addEventListener("click", goToStart);
   getHomeButton().addEventListener("click", goHome);
   document.getElementById("answer-result").addEventListener("click", onAnswerResultClick);
+  document.getElementById("report-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    console.log("Report: не реализовано");
+  });
+  document.getElementById("info-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    console.log("Информация: не реализовано");
+  });
+  document.getElementById("end-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (confirm("Завершить партию досрочно?")) endGame();
+  });
   for (const input of getDifficultyInputs()) {
     input.addEventListener("change", () => selectDifficulty(input.value));
   }
