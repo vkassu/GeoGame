@@ -13,10 +13,6 @@ export function showScreen(name) {
   if (home) home.hidden = name === "start";
 }
 
-export function getStartButton() {
-  return document.getElementById("start-btn");
-}
-
 export function getPlayAgainButton() {
   return document.getElementById("play-again-btn");
 }
@@ -68,38 +64,11 @@ export function hideAnswerResult() {
   document.querySelector(".progress").style.display = "";
 }
 
-export function getDifficultyInputs() {
-  return document.querySelectorAll('input[name="difficulty"]');
-}
-
-export function setSelectedDifficulty(value) {
-  const input = document.querySelector(`input[name="difficulty"][value="${value}"]`);
-  if (input) input.checked = true;
-}
-
-export function getModeInputs() {
-  return document.querySelectorAll('input[name="mode"]');
-}
-
-export function setSelectedMode(value) {
-  const input = document.querySelector(`input[name="mode"][value="${value}"]`);
-  if (input) input.checked = true;
-}
-
-export function setModeText(title, subtitle) {
-  document.getElementById("start-title").textContent = title;
-  document.getElementById("start-subtitle").textContent = subtitle;
-}
-
 export function updateTimer(seconds) {
   const el = document.getElementById("q-timer");
   if (!el) return;
   el.textContent = "⏱ " + seconds;
   el.className = "q-timer" + (seconds <= 5 ? " danger" : seconds <= 10 ? " warning" : "");
-}
-
-export function renderBestScore(n) {
-  document.getElementById("best-score").textContent = String(n);
 }
 
 export function renderGamesPlayed(n) {
@@ -115,13 +84,61 @@ export function renderGameXp(earned, total) {
   document.getElementById("game-xp-total").textContent = String(total);
 }
 
-export function setStartButtonReady(ready) {
-  const btn = getStartButton();
-  btn.disabled = !ready;
-  btn.textContent = ready ? "Начать" : "Загрузка…";
+// ---- Экран настройки (Регионы / Темы / Количество) ----
+
+export function renderBestXp(n) {
+  const a = document.getElementById("best-xp");
+  if (a) a.textContent = String(n);
+  const b = document.getElementById("result-best-xp");
+  if (b) b.textContent = String(n);
 }
 
-export function renderQuestion({ prompt, options, questionNumber, total, score, questionText }) {
+export function renderAvailableCount(n) {
+  const el = document.getElementById("available-count");
+  if (el) el.textContent = String(n);
+}
+
+export function setNavButtonEnabled(id, enabled) {
+  const el = document.getElementById(id);
+  if (el) el.disabled = !enabled;
+}
+
+// items: [{ key, label }], active: Set ключей, onToggle(key)
+export function renderRegionGrid(items, active, onToggle) {
+  const grid = document.getElementById("region-grid");
+  grid.innerHTML = "";
+  for (const { key, label } of items) {
+    const cell = document.createElement("div");
+    cell.className = "region-cell" + (active.has(key) ? " region-cell-on" : "");
+    const dot = document.createElement("span");
+    dot.className = "setup-dot";
+    const txt = document.createElement("span");
+    txt.className = "setup-label";
+    txt.textContent = label;
+    cell.append(dot, txt);
+    cell.addEventListener("click", () => onToggle(key));
+    grid.appendChild(cell);
+  }
+}
+
+export function renderTopicList(items, active, onToggle) {
+  const list = document.getElementById("topic-list");
+  list.innerHTML = "";
+  for (const { key, label } of items) {
+    const row = document.createElement("div");
+    row.className = "topic-row" + (active.has(key) ? " topic-row-on" : "");
+    const dot = document.createElement("span");
+    dot.className = "setup-dot";
+    const txt = document.createElement("span");
+    txt.className = "setup-label";
+    txt.textContent = label;
+    row.append(dot, txt);
+    row.addEventListener("click", () => onToggle(key));
+    list.appendChild(row);
+  }
+}
+
+export function renderQuestion({ prompt, options, questionNumber, total, questionText }) {
   if (questionText) {
     document.querySelector(".question-text").textContent = questionText;
   }

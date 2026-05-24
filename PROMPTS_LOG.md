@@ -18,6 +18,55 @@
 
 ---
 
+## 2026-05-24 #6 | Новый поток настройки: 3 экрана (Регионы / Темы / Количество)
+
+**Цель:** заменить текущий стартовый экран (выбор режима + сложности на одном экране) на три экрана как в референсе: Шаг 1 — Регионы (5 регионов API, сетка с включением/выключением), Шаг 2 — Темы (опциональная боковая ветка из Шага 1, список с галочками, без сложности тем), Шаг 3 — Количество вопросов (10/25/50/75/100). Сложность как концепция исчезает. «Режим» становится «темой», тем может быть выбрано несколько одновременно. Сохранение настроек в localStorage между сессиями. Рекорд переходит на новую схему — максимальный XP за партию (один общий, не по режиму). Старая система рекордов и поля state.mode / state.difficulty удаляются.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500, 1000×800)
+
+**Автор промпта:** Cowork
+
+**Промпт (полный текст, передан в терминал 2026-05-24):**
+
+> Реализуй новый поток настройки игры: три экрана (Регионы / Темы / Количество) вместо текущего одного стартового экрана. Перед началом открыть раздел «Следующая большая правка» в CLAUDE.md.
+>
+> **Цель.** Сейчас старт — один экран с радиокнопками режима (3) и сложности (3). В референсе настройка разбита на три шага: регионы, темы, количество. «Сложность» исчезает, «один режим» исчезает — вместо неё несколько выбираемых тем и регионов одновременно.
+>
+> **Удаляем из кода:** в main.js — `QUESTIONS_BY_DIFFICULTY`, `loadBestScore`, `bestScoreFor`, `state.difficulty/mode/bestScore`, `selectDifficulty`, `selectMode`, очистку difficulty/mode/bestScore в loadFromStorage, в init — вызовы setSelectedDifficulty/setSelectedMode/setModeText/renderBestScore и циклы по getDifficultyInputs/getModeInputs, соответствующие импорты. В ui.js — getDifficultyInputs/setSelectedDifficulty/getModeInputs/setSelectedMode/setModeText/renderBestScore. В index.html — весь старый блок #start-screen (start-title, start-subtitle, record, mode-title, mode, difficulty-title, difficulty, start-btn), оставить контейнер + перенести xp-total. В css — .mode/.mode-option/.difficulty/.diff-option/.group-title/#start-title/.subtitle/.record.
+>
+> **Новая модель:** `TOPICS` (country/capital/countryByCapital — label/question/prompt/answer/valid), `REGIONS` (europe/asia/africa/americas/oceania → apiValue Europe/Asia/Africa/Americas/Oceania), `QUESTION_COUNTS=[10,25,50,75,100]`, дефолты (все регионы, все темы, 10). STORAGE: setupRegions/setupTopics/setupQuestionCount + bestXpPerGame. state.setup={regions,topics,questionCount}, bestXpPerGame. loadFromStorage — парсинг JSON-массивов с фильтрацией по валидным ключам, минимум остаётся дефолт.
+>
+> **HTML:** три новых section — #start-screen (Регионы: .setup-panel с #region-grid, bulk-кнопки regions-clear/regions-all; .setup-info с available-count, xp-total, best-xp, кнопкой open-topics-btn; .setup-nav с regions-back disabled и regions-next «Начало»), #topics-screen (#topic-list, topics-clear/topics-all, topics-back), #count-screen (5 .count-btn с data-count, count-back). Игровой и результат не трогать (кроме опц. строки рекорда).
+>
+> **CSS:** панель = стиль .screen; bulk/назад — серо-белые; «Темы»/«Начало»/количество — синий глянец (как .option-btn). Сетка регионов 2 колонки с индикатором (зелёный/серый) + названием, тап по ячейке. Список тем — вертикальный. Кнопки количества — полноширинные ~60px.
+>
+> **Логика:** renderRegions/renderTopics (toggle ключа, сохранить, перерисовать, обновить «Начало» и счётчик). «Начало» активна только при regions>0 И topics>0. Очистить/Выбрать всё. «Темы»→showScreen(topics), «Начало»→showScreen(count). selectQuestionCountAndStart(n): валидация ∈ QUESTION_COUNTS, сохранить, startGame. startGame: allowedRegions из apiValue, pool = allCountries.filter(region∈allowed); для каждого вопроса тема случайно из state.setup.topics, страна из пула + TOPICS[topic].valid; если по теме нет стран — пропустить; если пул пуст — ошибка; state.questions=[{country,topicKey}]; если пул меньше questionCount — alert «Доступно только N. Продолжить?». showQuestion — topic вместо mode. endGame — удалить bestScore, добавить bestXpPerGame. goToStart — showScreen(start) + перерендер Шага 1. ui.js — renderBestXp, renderAvailableCount. Счётчик «Доступно» — размер пула (MVP). init — loadFromStorage, начальный UI, слушатели на bulk/Темы/Начало/Назад/count-btn; getStartButton/setStartButtonReady больше нет; активация «Начало» при данные+регионы+темы.
+>
+> **Экран результата:** «Играть снова» → goToStart; опц. строка «Рекорд: N XP».
+>
+> **Краевые случаи:** пусто/битый LS → дефолты; нет регионов/тем → «Начало» disabled; 100 при пуле 47 → alert «Доступно только 47. Продолжить?»; reload во время игры → партия теряется, Шаг 1 с настройками.
+>
+> **Не трогать:** подсказку, таймер, экран результата ответа, XP-начисление в handleAnswer, кнопку «На главную», data.js. Кеш-busting `?v=20260525`.
+>
+> **CLAUDE.md после работы:** в «Сделано» — про новый поток; «В работе» → нет задач; «Дальше» — поднять расширение тем; ключи localStorage (новые + старые как deprecated); удалить «Следующая большая правка»; «Режимы игры» → «Темы вопросов».
+>
+> **Перед/после:** запись #6 в PROMPTS_LOG (передан → выполнен + результат). Если что-то не сходится с кодом — ОСТАНОВИСЬ и спроси, не додумывай.
+
+**Результат / расхождения:**
+- **Согласованное отклонение от промпта:** добавил поле `region` в запрос `data.js` (`?fields=...,region`). Без него `country.region` приходит `undefined` и фильтр по регионам в принципе не работает — это дыра в формулировке промпта («не трогать data.js»), остановился и согласовал с Алексеем/Cowork в чате. Это единственная правка data.js, геттеры и capitals_ru не трогал.
+- **Тронуты:** `js/data.js` (region в fields), `js/main.js` (полный рефактор под TOPICS/REGIONS/QUESTION_COUNTS, state.setup, новый STORAGE, поток настройки, startGame пересобирает `[{country, topicKey}]`, endGame → bestXpPerGame), `js/ui.js` (удалены difficulty/mode/start-button функции; добавлены renderRegionGrid/renderTopicList/renderBestXp/renderAvailableCount/setNavButtonEnabled), `index.html` (3 новых экрана, строка рекорда на результате, cache-bust v20260525), `css/style.css` (удалены мёртвые .mode/.diff/.record/.subtitle/.group-title; добавлены стили setup-panel/region-grid/topic-list/setup-nav/count-btn и пр.), `CLAUDE.md` (Темы вопросов, статус, ключи, доменный факт про region, удалён раздел «Следующая большая правка»).
+- **Решения, не зафиксированные жёстко в промпте:**
+  - Рендер регионов/тем сделал в `ui.js` как функции, принимающие `(items, activeSet, onToggle)` — состояние и обработчики остаются в main.js. Это аккуратнее по слоям, чем «рендер в main.js», и не противоречит конвенции «ui = DOM, main = state».
+  - Счётчик «Доступно вопросов» считаю как **usable-пул** (регион ∩ есть валидная тема), а не «голый размер региона». Точнее и реагирует на снятие всех тем (→ 0). Это строго лучше «MVP-простого» варианта из промпта.
+  - Один вопрос = одна страна (без повторов в партии), тема назначается случайно из валидных для этой страны. Кап вопросов = размер usable-пула.
+  - Дистракторы берутся сначала из выбранных регионов, при нехватке добираются из всех валидных по теме — чтобы всегда было 4 варианта даже в маленьком регионе.
+- **Проверено в браузере (preview :5500, 1000×800):** дефолты (5 регионов/3 темы/«Доступно 245»/«Начало» активна); toggle региона (Европа −53 → 192); Очистить/Выбрать всё; снятие всех тем → 0 и «Начало» disabled; persist регионов/тем в LS; полный прогон 10 вопросов со смешанными темами (встретились все 3 типа вопроса), +10/правильный, рекорд по XP записан; краевой случай Океания(27)+100 → «Доступно только 27 вопросов. Продолжить?» (да → 27 вопросов, нет → остаёмся на Шаге 3); после reload настройки/XP/рекорд сохраняются, партия сбрасывается. Ошибок в консоли нет.
+- **На что смотреть при проверке:** на iPad/узком экране — три экрана настройки (сетка регионов 2 кол., кнопки количества) должны влезать без горизонтального скролла. «Назад» на Шаге 1 намеренно disabled (некуда идти — игрового меню пока нет).
+
+---
+
 ## 2026-05-24 #5 | XP-накопление + отображение
 
 **Цель:** превратить «+10 XP» на экране результата ответа из надписи-обещания в работающий накопитель: +10 XP за правильный, общий счётчик `geogame:xpTotal` в localStorage, отображение на главном экране («Опыт: N») и на экране результата партии («Получено за партию: +N XP. Всего: M XP»). Один общий XP на все режимы. Подсказка XP не снижает.

@@ -3,13 +3,7 @@
 import { fetchCountries, hasCapital, capitalName, ruName } from "./data.js";
 import {
   showScreen,
-  getStartButton,
   getPlayAgainButton,
-  getDifficultyInputs,
-  setSelectedDifficulty,
-  getModeInputs,
-  setSelectedMode,
-  setModeText,
   getHomeButton,
   getHintButton,
   setHintButtonState,
@@ -18,72 +12,81 @@ import {
   showAnswerResult,
   hideAnswerResult,
   updateTimer,
-  setStartButtonReady,
   renderQuestion,
   markAnswer,
   renderResult,
-  renderBestScore,
   renderGamesPlayed,
   renderXpTotal,
   renderGameXp,
+  renderRegionGrid,
+  renderTopicList,
+  renderBestXp,
+  renderAvailableCount,
+  setNavButtonEnabled,
 } from "./ui.js";
 
-const QUESTIONS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 15 };
 const OPTIONS_PER_QUESTION = 4;
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
 
-// Режимы игры.
-//   prompt   — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
-//   answer   — функция, возвращающая правильный ответ (и текст вариантов)
-//   valid    — фильтр стран, пригодных для режима
-const MODES = {
+// Темы вопросов.
+//   prompt  — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
+//   answer  — функция, возвращающая правильный ответ (и текст вариантов)
+//   valid   — фильтр стран, пригодных для темы
+const TOPICS = {
   country: {
-    startTitle: "Угадай страну по флагу",
-    subtitle: "По флагу определи, что это за страна.",
+    label: "Страна по флагу",
     question: "Что это за страна?",
     prompt: (c) => ({ type: "flag", country: c }),
     answer: ruName,
     valid: () => true,
   },
   capital: {
-    startTitle: "Угадай столицу страны",
-    subtitle: "По флагу определи страну и выбери её столицу.",
+    label: "Столица",
     question: "Какая столица этой страны?",
     prompt: (c) => ({ type: "flag", country: c }),
     answer: capitalName,
     valid: hasCapital,
   },
   countryByCapital: {
-    startTitle: "Угадай страну по столице",
-    subtitle: "По названию столицы определи страну.",
+    label: "Страна по столице",
     question: "Столицей какой страны является этот город?",
     prompt: (c) => ({ type: "text", text: capitalName(c) }),
     answer: ruName,
     valid: hasCapital,
   },
 };
-const DEFAULT_MODE = "country";
+
+// Регионы: ключ → { label, apiValue }. apiValue сверяется с country.region.
+const REGIONS = {
+  europe:   { label: "Европа",  apiValue: "Europe"   },
+  asia:     { label: "Азия",    apiValue: "Asia"     },
+  africa:   { label: "Африка",  apiValue: "Africa"   },
+  americas: { label: "Америка", apiValue: "Americas" },
+  oceania:  { label: "Океания", apiValue: "Oceania"  },
+};
+
+const QUESTION_COUNTS = [10, 25, 50, 75, 100];
+
+const DEFAULT_REGIONS = ["europe", "asia", "africa", "americas", "oceania"];
+const DEFAULT_TOPICS = ["country", "capital", "countryByCapital"];
+const DEFAULT_QUESTION_COUNT = 10;
 
 const STORAGE = {
-  difficulty: "geogame:difficulty",
   gamesPlayed: "geogame:gamesPlayed",
-  mode: "geogame:mode",
-  // Общий XP на все режимы (не по режиму — поэтому строка, а не функция).
   xpTotal: "geogame:xpTotal",
-  // Рекорд хранится отдельно для каждого режима: geogame:bestScore:<mode>
-  bestScoreFor: (mode) => `geogame:bestScore:${mode}`,
+  setupRegions: "geogame:setup:regions",
+  setupTopics: "geogame:setup:topics",
+  setupQuestionCount: "geogame:setup:questionCount",
+  bestXpPerGame: "geogame:bestXpPerGame",
 };
 
 const state = {
   screen: "start",
-  difficulty: "medium",
-  mode: DEFAULT_MODE,
-  bestScore: 0,
   gamesPlayed: 0,
   allCountries: [],
-  countries: [],
-  questions: [],
+  regionPool: [],          // страны под текущие регионы (заполняется в startGame, для дистракторов)
+  questions: [],           // [{ country, topicKey }]
   currentQuestion: 0,
   score: 0,
   isGameOver: false,
@@ -93,37 +96,39 @@ const state = {
   currentCorrect: "",
   xpTotal: 0,
   xpEarnedThisGame: 0,
+  bestXpPerGame: 0,
+  dataLoaded: false,
+  setup: {
+    regions: [...DEFAULT_REGIONS],
+    topics: [...DEFAULT_TOPICS],
+    questionCount: DEFAULT_QUESTION_COUNT,
+  },
 };
-
-function loadBestScore(mode) {
-  return Number(localStorage.getItem(STORAGE.bestScoreFor(mode))) || 0;
-}
 
 function loadFromStorage() {
   state.gamesPlayed = Number(localStorage.getItem(STORAGE.gamesPlayed)) || 0;
   state.xpTotal = Number(localStorage.getItem(STORAGE.xpTotal)) || 0;
-  const savedDiff = localStorage.getItem(STORAGE.difficulty);
-  state.difficulty = QUESTIONS_BY_DIFFICULTY[savedDiff] ? savedDiff : "medium";
-  const savedMode = localStorage.getItem(STORAGE.mode);
-  state.mode = MODES[savedMode] ? savedMode : DEFAULT_MODE;
-  state.bestScore = loadBestScore(state.mode);
+  state.bestXpPerGame = Number(localStorage.getItem(STORAGE.bestXpPerGame)) || 0;
+
+  try {
+    const r = JSON.parse(localStorage.getItem(STORAGE.setupRegions) || "null");
+    if (Array.isArray(r)) {
+      const valid = r.filter((k) => REGIONS[k]);
+      if (valid.length) state.setup.regions = valid;
+    }
+  } catch (_) {}
+  try {
+    const t = JSON.parse(localStorage.getItem(STORAGE.setupTopics) || "null");
+    if (Array.isArray(t)) {
+      const valid = t.filter((k) => TOPICS[k]);
+      if (valid.length) state.setup.topics = valid;
+    }
+  } catch (_) {}
+  const qc = Number(localStorage.getItem(STORAGE.setupQuestionCount));
+  if (QUESTION_COUNTS.includes(qc)) state.setup.questionCount = qc;
 }
 
-function selectDifficulty(value) {
-  if (!QUESTIONS_BY_DIFFICULTY[value]) return;
-  state.difficulty = value;
-  localStorage.setItem(STORAGE.difficulty, value);
-}
-
-function selectMode(value) {
-  if (!MODES[value]) return;
-  state.mode = value;
-  localStorage.setItem(STORAGE.mode, value);
-  state.bestScore = loadBestScore(value);
-  renderBestScore(state.bestScore);
-  const mode = MODES[value];
-  setModeText(mode.startTitle, mode.subtitle);
-}
+// ---------- утилиты ----------
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -138,19 +143,133 @@ function sample(arr, n) {
   return shuffle(arr).slice(0, n);
 }
 
-function buildOptions(correctCountry, answer) {
-  const correct = answer(correctCountry);
-  const pool = state.countries.filter(
-    (c) => c !== correctCountry && answer(c) !== correct
+// Страны под выбранные регионы.
+function regionPoolCountries() {
+  const allowed = new Set(state.setup.regions.map((k) => REGIONS[k].apiValue));
+  return state.allCountries.filter((c) => allowed.has(c.region));
+}
+
+// Страны, по которым реально можно задать хотя бы один из выбранных вопросов.
+function usablePoolCountries() {
+  const topics = state.setup.topics;
+  return regionPoolCountries().filter((c) =>
+    topics.some((tk) => TOPICS[tk] && TOPICS[tk].valid(c))
   );
-  const wrong = sample(pool, OPTIONS_PER_QUESTION - 1).map(answer);
+}
+
+// ---------- экран настройки (Шаги 1–3) ----------
+
+function persistRegions() {
+  localStorage.setItem(STORAGE.setupRegions, JSON.stringify(state.setup.regions));
+}
+function persistTopics() {
+  localStorage.setItem(STORAGE.setupTopics, JSON.stringify(state.setup.topics));
+}
+
+function toggleRegion(key) {
+  if (!REGIONS[key]) return;
+  const i = state.setup.regions.indexOf(key);
+  if (i >= 0) state.setup.regions.splice(i, 1);
+  else state.setup.regions.push(key);
+  persistRegions();
+  refreshSetupUI();
+}
+
+function toggleTopic(key) {
+  if (!TOPICS[key]) return;
+  const i = state.setup.topics.indexOf(key);
+  if (i >= 0) state.setup.topics.splice(i, 1);
+  else state.setup.topics.push(key);
+  persistTopics();
+  refreshSetupUI();
+}
+
+function setAllRegions(on) {
+  state.setup.regions = on ? Object.keys(REGIONS) : [];
+  persistRegions();
+  refreshSetupUI();
+}
+function setAllTopics(on) {
+  state.setup.topics = on ? Object.keys(TOPICS) : [];
+  persistTopics();
+  refreshSetupUI();
+}
+
+function updateStartEnabled() {
+  const ok =
+    state.dataLoaded &&
+    state.setup.regions.length > 0 &&
+    state.setup.topics.length > 0;
+  setNavButtonEnabled("regions-next", ok);
+}
+
+// Перерисовывает оба экрана настройки (регионы + темы), счётчик доступных и кнопку «Начало».
+function refreshSetupUI() {
+  const regionItems = Object.keys(REGIONS).map((k) => ({ key: k, label: REGIONS[k].label }));
+  const topicItems = Object.keys(TOPICS).map((k) => ({ key: k, label: TOPICS[k].label }));
+  renderRegionGrid(regionItems, new Set(state.setup.regions), toggleRegion);
+  renderTopicList(topicItems, new Set(state.setup.topics), toggleTopic);
+  renderAvailableCount(state.dataLoaded ? usablePoolCountries().length : "—");
+  updateStartEnabled();
+}
+
+function selectQuestionCountAndStart(n) {
+  if (!QUESTION_COUNTS.includes(n)) return;
+  state.setup.questionCount = n;
+  localStorage.setItem(STORAGE.setupQuestionCount, String(n));
+  startGame();
+}
+
+// ---------- игра ----------
+
+function buildOptions(correctCountry, topic) {
+  const answer = topic.answer;
+  const correct = answer(correctCountry);
+  const seen = new Set([correct]);
+  const wrong = [];
+  // дистракторы: сначала из выбранных регионов, при нехватке — из всех валидных по теме
+  const sources = [
+    state.regionPool.filter(topic.valid),
+    state.allCountries.filter(topic.valid),
+  ];
+  for (const src of sources) {
+    for (const c of shuffle(src)) {
+      if (wrong.length >= OPTIONS_PER_QUESTION - 1) break;
+      const v = answer(c);
+      if (!seen.has(v)) {
+        seen.add(v);
+        wrong.push(v);
+      }
+    }
+    if (wrong.length >= OPTIONS_PER_QUESTION - 1) break;
+  }
   return shuffle([correct, ...wrong]);
 }
 
 function startGame() {
-  const total = QUESTIONS_BY_DIFFICULTY[state.difficulty];
-  state.countries = state.allCountries.filter(MODES[state.mode].valid);
-  state.questions = sample(state.countries, total);
+  state.regionPool = regionPoolCountries();
+  const topics = state.setup.topics.slice();
+  const usable = usablePoolCountries();
+
+  if (usable.length === 0) {
+    alert("Нет вопросов под выбранные настройки. Измените регионы или темы.");
+    return;
+  }
+
+  let count = state.setup.questionCount;
+  if (count > usable.length) {
+    if (!confirm(`Доступно только ${usable.length} вопросов. Продолжить?`)) return;
+    count = usable.length;
+  }
+
+  // По одной стране на вопрос (без повторов), тема — случайная из валидных для страны.
+  const chosen = sample(usable, count);
+  state.questions = chosen.map((country) => {
+    const validTopics = topics.filter((tk) => TOPICS[tk].valid(country));
+    const topicKey = validTopics[Math.floor(Math.random() * validTopics.length)];
+    return { country, topicKey };
+  });
+
   state.currentQuestion = 0;
   state.score = 0;
   state.xpEarnedThisGame = 0;
@@ -172,10 +291,9 @@ function startTimer() {
     updateTimer(seconds);
     if (seconds <= 0) {
       clearTimer();
-      // Время вышло — неверный ответ, правильный — пустая строка (ни одна кнопка не совпадёт)
-      const mode = MODES[state.mode];
-      const country = state.questions[state.currentQuestion];
-      const correct = mode.answer(country);
+      // Время вышло — неверный ответ (ни одна кнопка не совпадёт с правильным).
+      const q = state.questions[state.currentQuestion];
+      const correct = TOPICS[q.topicKey].answer(q.country);
       renderAnswerResult(false, "—", correct);
       showAnswerResult();
     }
@@ -192,18 +310,18 @@ function clearTimer() {
 function showQuestion(index) {
   hideAnswerResult();
   startTimer();
-  const mode = MODES[state.mode];
-  const country = state.questions[index];
-  const correct = mode.answer(country);
-  const options = buildOptions(country, mode.answer);
+  const q = state.questions[index];
+  const topic = TOPICS[q.topicKey];
+  const country = q.country;
+  const correct = topic.answer(country);
+  const options = buildOptions(country, topic);
 
   const buttons = renderQuestion({
-    prompt: mode.prompt(country),
+    prompt: topic.prompt(country),
     options,
     questionNumber: index + 1,
     total: state.questions.length,
-    score: state.score,
-    questionText: mode.question,
+    questionText: topic.question,
   });
 
   state.currentButtons = buttons;
@@ -267,10 +385,10 @@ function endGame() {
   state.gamesPlayed += 1;
   localStorage.setItem(STORAGE.gamesPlayed, String(state.gamesPlayed));
 
-  if (state.score > state.bestScore) {
-    state.bestScore = state.score;
-    localStorage.setItem(STORAGE.bestScoreFor(state.mode), String(state.bestScore));
-    renderBestScore(state.bestScore);
+  // Рекорд — максимальный XP за одну партию (один общий, не по теме/настройкам).
+  if (state.xpEarnedThisGame > state.bestXpPerGame) {
+    state.bestXpPerGame = state.xpEarnedThisGame;
+    localStorage.setItem(STORAGE.bestXpPerGame, String(state.bestXpPerGame));
   }
 
   state.screen = "result";
@@ -278,15 +396,19 @@ function endGame() {
   renderGamesPlayed(state.gamesPlayed);
   renderGameXp(state.xpEarnedThisGame, state.xpTotal);
   renderXpTotal(state.xpTotal);
+  renderBestXp(state.bestXpPerGame);
   showScreen(state.screen);
 }
 
 function goToStart() {
   state.screen = "start";
+  refreshSetupUI();
+  renderXpTotal(state.xpTotal);
+  renderBestXp(state.bestXpPerGame);
   showScreen(state.screen);
 }
 
-// Возврат на главную. Если партия идёт — спрашиваем подтверждение.
+// Возврат на главную (Шаг 1). Если партия идёт — спрашиваем подтверждение.
 function goHome() {
   if (state.screen === "game" && !state.isGameOver) {
     if (!confirm("Прервать текущую партию и вернуться на главную?")) return;
@@ -298,13 +420,10 @@ async function init() {
   const statusEl = document.getElementById("status");
 
   loadFromStorage();
-  renderBestScore(state.bestScore);
   renderXpTotal(state.xpTotal);
-  setSelectedDifficulty(state.difficulty);
-  setSelectedMode(state.mode);
-  setModeText(MODES[state.mode].startTitle, MODES[state.mode].subtitle);
+  renderBestXp(state.bestXpPerGame);
+  refreshSetupUI();
 
-  getStartButton().addEventListener("click", startGame);
   getPlayAgainButton().addEventListener("click", goToStart);
   getHomeButton().addEventListener("click", goHome);
   getHintButton().addEventListener("click", handleHintClick);
@@ -321,18 +440,31 @@ async function init() {
     e.stopPropagation();
     if (confirm("Завершить партию досрочно?")) endGame();
   });
-  for (const input of getDifficultyInputs()) {
-    input.addEventListener("change", () => selectDifficulty(input.value));
+
+  // Шаг 1 — регионы
+  document.getElementById("regions-clear").addEventListener("click", () => setAllRegions(false));
+  document.getElementById("regions-all").addEventListener("click", () => setAllRegions(true));
+  document.getElementById("open-topics-btn").addEventListener("click", () => showScreen("topics"));
+  document.getElementById("regions-next").addEventListener("click", () => showScreen("count"));
+  // #regions-back — заглушка (disabled), идти из Шага 1 пока некуда.
+
+  // Шаг 2 — темы
+  document.getElementById("topics-clear").addEventListener("click", () => setAllTopics(false));
+  document.getElementById("topics-all").addEventListener("click", () => setAllTopics(true));
+  document.getElementById("topics-back").addEventListener("click", () => goToStart());
+
+  // Шаг 3 — количество
+  for (const btn of document.querySelectorAll(".count-btn")) {
+    btn.addEventListener("click", () => selectQuestionCountAndStart(Number(btn.dataset.count)));
   }
-  for (const input of getModeInputs()) {
-    input.addEventListener("change", () => selectMode(input.value));
-  }
+  document.getElementById("count-back").addEventListener("click", () => goToStart());
 
   try {
     const all = await fetchCountries();
     state.allCountries = all;
+    state.dataLoaded = true;
     statusEl.textContent = `Загружено стран: ${all.length}`;
-    setStartButtonReady(true);
+    refreshSetupUI(); // обновить «доступно вопросов» и активировать «Начало»
   } catch (err) {
     statusEl.className = "error";
     statusEl.textContent = "Ошибка загрузки: " + err.message;

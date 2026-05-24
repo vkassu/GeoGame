@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260524">
+  <link rel="stylesheet" href="css/style.css?v=20260525">
 </head>
 <body>
   <header class="topbar">
@@ -14,51 +14,62 @@
   <div id="status">Загрузка данных с restcountries.com…</div>
 
   <main id="game">
+    <!-- Шаг 1: Регионы (стартовый экран) -->
     <section id="start-screen" class="screen active">
-      <h2 id="start-title">Угадай страну по флагу</h2>
-      <p class="subtitle" id="start-subtitle">По флагу определи, что это за страна.</p>
-      <p class="record">Рекорд: <span id="best-score">0</span></p>
-      <p class="xp-total">Опыт: <span id="xp-total">0</span></p>
-
-      <h3 class="group-title" id="mode-title">Выбор режима</h3>
-      <div class="mode" role="radiogroup" aria-labelledby="mode-title">
-        <label class="mode-option">
-          <input type="radio" name="mode" value="country" checked>
-          <span class="mode-name">Страна</span>
-          <small>по флагу</small>
-        </label>
-        <label class="mode-option">
-          <input type="radio" name="mode" value="capital">
-          <span class="mode-name">Столица</span>
-          <small>по флагу</small>
-        </label>
-        <label class="mode-option">
-          <input type="radio" name="mode" value="countryByCapital">
-          <span class="mode-name">Страна</span>
-          <small>по столице</small>
-        </label>
+      <div class="setup-panel">
+        <h2 class="setup-title">Регионы</h2>
+        <div class="region-grid" id="region-grid"></div>
+        <div class="setup-bulk">
+          <button type="button" class="bulk-btn" id="regions-clear">Очистить всё</button>
+          <button type="button" class="bulk-btn" id="regions-all">Выбрать всё</button>
+        </div>
       </div>
 
-      <h3 class="group-title" id="difficulty-title">Выбор сложности</h3>
-      <div class="difficulty" role="radiogroup" aria-labelledby="difficulty-title">
-        <label class="diff-option">
-          <input type="radio" name="difficulty" value="easy">
-          <span class="diff-name">Лёгкая</span>
-          <small>5 вопросов</small>
-        </label>
-        <label class="diff-option">
-          <input type="radio" name="difficulty" value="medium" checked>
-          <span class="diff-name">Средняя</span>
-          <small>10 вопросов</small>
-        </label>
-        <label class="diff-option">
-          <input type="radio" name="difficulty" value="hard">
-          <span class="diff-name">Сложная</span>
-          <small>15 вопросов</small>
-        </label>
+      <div class="setup-info">
+        <div class="setup-info-row">
+          <span>Доступно вопросов: <span id="available-count">—</span></span>
+          <span>Опыт: <span id="xp-total">0</span></span>
+        </div>
+        <div class="setup-info-row">
+          <span>Рекорд: <span id="best-xp">0</span> XP</span>
+        </div>
+        <button type="button" class="topics-btn" id="open-topics-btn">Темы</button>
       </div>
 
-      <button id="start-btn" class="primary-btn" disabled>Загрузка…</button>
+      <div class="setup-nav">
+        <button type="button" class="nav-btn" id="regions-back" disabled>Назад</button>
+        <button type="button" class="nav-btn nav-btn-primary" id="regions-next" disabled>Начало</button>
+      </div>
+    </section>
+
+    <!-- Шаг 2: Темы (опциональная боковая ветка из Шага 1) -->
+    <section id="topics-screen" class="screen">
+      <div class="setup-panel">
+        <h2 class="setup-title">Темы</h2>
+        <div class="topic-list" id="topic-list"></div>
+        <div class="setup-bulk">
+          <button type="button" class="bulk-btn" id="topics-clear">Очистить всё</button>
+          <button type="button" class="bulk-btn" id="topics-all">Выбрать всё</button>
+        </div>
+      </div>
+
+      <div class="setup-nav">
+        <button type="button" class="nav-btn" id="topics-back">Назад</button>
+      </div>
+    </section>
+
+    <!-- Шаг 3: Количество вопросов -->
+    <section id="count-screen" class="screen">
+      <div class="count-list">
+        <button type="button" class="count-btn" data-count="10">10 вопросов</button>
+        <button type="button" class="count-btn" data-count="25">25 вопросов</button>
+        <button type="button" class="count-btn" data-count="50">50 вопросов</button>
+        <button type="button" class="count-btn" data-count="75">75 вопросов</button>
+        <button type="button" class="count-btn" data-count="100">100 вопросов</button>
+      </div>
+      <div class="setup-nav">
+        <button type="button" class="nav-btn" id="count-back">Назад</button>
+      </div>
     </section>
 
     <section id="game-screen" class="screen">
@@ -93,11 +104,12 @@
       <h2>Игра окончена</h2>
       <p class="result-text" id="result-text"></p>
       <p class="game-xp">Получено за партию: <span id="game-xp-earned">0</span> XP. Всего: <span id="game-xp-total">0</span> XP</p>
+      <p class="game-xp">Рекорд за партию: <span id="result-best-xp">0</span> XP</p>
       <p class="games-played">Партий сыграно: <span id="games-played">0</span></p>
       <button id="play-again-btn" class="primary-btn">Играть снова</button>
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260524"></script>
+  <script type="module" src="js/main.js?v=20260525"></script>
 </body>
 </html>

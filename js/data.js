@@ -1,7 +1,7 @@
 // Слой данных: запрос к restcountries.com и геттеры полей страны.
 
 // v3.1 требует ?fields=..., иначе 400.
-export const API_URL = "https://restcountries.com/v3.1/all?fields=name,translations,capital,population,flags,cca2";
+export const API_URL = "https://restcountries.com/v3.1/all?fields=name,translations,capital,population,flags,cca2,region";
 
 // Русские названия столиц (API отдаёт столицы только по-английски).
 // Грузится из data/capitals_ru.json при старте, ключ — код страны cca2.
