@@ -24,11 +24,14 @@ import {
   renderResult,
   renderBestScore,
   renderGamesPlayed,
+  renderXpTotal,
+  renderGameXp,
 } from "./ui.js";
 
 const QUESTIONS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 15 };
 const OPTIONS_PER_QUESTION = 4;
 const QUESTION_TIME_SEC = 30;
+const XP_PER_CORRECT = 10;
 
 // Режимы игры.
 //   prompt   — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
@@ -66,6 +69,8 @@ const STORAGE = {
   difficulty: "geogame:difficulty",
   gamesPlayed: "geogame:gamesPlayed",
   mode: "geogame:mode",
+  // Общий XP на все режимы (не по режиму — поэтому строка, а не функция).
+  xpTotal: "geogame:xpTotal",
   // Рекорд хранится отдельно для каждого режима: geogame:bestScore:<mode>
   bestScoreFor: (mode) => `geogame:bestScore:${mode}`,
 };
@@ -86,6 +91,8 @@ const state = {
   hintUsed: false,
   currentButtons: [],
   currentCorrect: "",
+  xpTotal: 0,
+  xpEarnedThisGame: 0,
 };
 
 function loadBestScore(mode) {
@@ -94,6 +101,7 @@ function loadBestScore(mode) {
 
 function loadFromStorage() {
   state.gamesPlayed = Number(localStorage.getItem(STORAGE.gamesPlayed)) || 0;
+  state.xpTotal = Number(localStorage.getItem(STORAGE.xpTotal)) || 0;
   const savedDiff = localStorage.getItem(STORAGE.difficulty);
   state.difficulty = QUESTIONS_BY_DIFFICULTY[savedDiff] ? savedDiff : "medium";
   const savedMode = localStorage.getItem(STORAGE.mode);
@@ -145,6 +153,7 @@ function startGame() {
   state.questions = sample(state.countries, total);
   state.currentQuestion = 0;
   state.score = 0;
+  state.xpEarnedThisGame = 0;
   state.isGameOver = false;
   state.hintUsed = false;
   state.currentButtons = [];
@@ -220,7 +229,12 @@ function handleAnswer(picked, allButtons, correct) {
   clearTimer();
   setHintButtonState(false);
   const isCorrect = picked.value === correct;
-  if (isCorrect) state.score++;
+  if (isCorrect) {
+    state.score++;
+    state.xpTotal += XP_PER_CORRECT;
+    state.xpEarnedThisGame += XP_PER_CORRECT;
+    localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
+  }
 
   for (const { button } of allButtons) {
     button.disabled = true;
@@ -262,6 +276,8 @@ function endGame() {
   state.screen = "result";
   renderResult(state.score, state.questions.length);
   renderGamesPlayed(state.gamesPlayed);
+  renderGameXp(state.xpEarnedThisGame, state.xpTotal);
+  renderXpTotal(state.xpTotal);
   showScreen(state.screen);
 }
 
@@ -283,6 +299,7 @@ async function init() {
 
   loadFromStorage();
   renderBestScore(state.bestScore);
+  renderXpTotal(state.xpTotal);
   setSelectedDifficulty(state.difficulty);
   setSelectedMode(state.mode);
   setModeText(MODES[state.mode].startTitle, MODES[state.mode].subtitle);

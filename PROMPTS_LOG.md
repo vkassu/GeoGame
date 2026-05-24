@@ -18,6 +18,42 @@
 
 ---
 
+## 2026-05-24 #5 | XP-накопление + отображение
+
+**Цель:** превратить «+10 XP» на экране результата ответа из надписи-обещания в работающий накопитель: +10 XP за правильный, общий счётчик `geogame:xpTotal` в localStorage, отображение на главном экране («Опыт: N») и на экране результата партии («Получено за партию: +N XP. Всего: M XP»). Один общий XP на все режимы. Подсказка XP не снижает.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500, 1000×800)
+
+**Автор промпта:** Cowork
+
+**Промпт (полный текст, передан в терминал 2026-05-24):**
+
+> Реализуй XP-накопление с сохранением и отображением.
+>
+> **Продуктовое описание.** Сейчас на экране результата ответа показывается «+10 XP», но это только надпись — нигде не сохраняется. Нужно: за каждый правильный ответ +10 XP, общий XP игрока копится между партиями (один счётчик, общий для всех режимов), отображается на главном экране и на экране результата партии. Подсказка на начисление не влияет — XP полный. MVP: фиксированные 10 XP, без уровней/формул/бонусов.
+>
+> **1. js/main.js:** константа `XP_PER_CORRECT = 10` рядом с `QUESTION_TIME_SEC`; в `STORAGE` ключ `xpTotal: "geogame:xpTotal"` (строка, не функция — общий XP); в `state` поля `xpTotal: 0`, `xpEarnedThisGame: 0`; в `loadFromStorage` — `state.xpTotal = Number(localStorage.getItem(STORAGE.xpTotal)) || 0`; в `startGame` после `state.score = 0` — `state.xpEarnedThisGame = 0` (xpTotal не трогать); в `handleAnswer` блок начисления: при `isCorrect` — `state.score++`, `state.xpTotal += XP_PER_CORRECT`, `state.xpEarnedThisGame += XP_PER_CORRECT`, `localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal))` (без условий с hintUsed); в `endGame` после `renderGamesPlayed` — `renderGameXp(state.xpEarnedThisGame, state.xpTotal)` и `renderXpTotal(state.xpTotal)`; в `init` после `renderBestScore` — `renderXpTotal(state.xpTotal)`; импорт `renderXpTotal`, `renderGameXp` из ui.js.
+>
+> **2. js/ui.js:** `renderXpTotal(n)` → `#xp-total`.textContent; `renderGameXp(earned, total)` → `#game-xp-earned` и `#game-xp-total`.
+>
+> **3. index.html:** на `#start-screen` после `<p class="record">` — `<p class="xp-total">Опыт: <span id="xp-total">0</span></p>`; на `#result-screen` перед `<p class="games-played">` — `<p class="game-xp">Получено за партию: <span id="game-xp-earned">0</span> XP. Всего: <span id="game-xp-total">0</span> XP</p>`.
+>
+> **4. css/style.css:** `.xp-total` (как `.record`: margin 0 0 16px, 14px, #2c7be5, 600); `.game-xp` (как `.games-played`: margin 0 0 12px, 14px, #2c7be5, 600).
+>
+> **5. CLAUDE.md:** в «Текущий статус» → «Сделано» добавить пункт про XP; из «Дальше» удалить пункт 1 (XP), сдвинуть нумерацию; упомянуть ключ в «Соглашения → Ключи localStorage».
+>
+> **Краевые случаи:** первая игра → 0 через `|| 0`; истёк таймер → handleAnswer не зовётся, XP не начисляется (корректно); правильно с подсказкой → XP полный; ошибка с подсказкой → XP нет; «На главную» в партии → xpTotal уже сохранён. **Не трогать:** рекорды, подсказку, таймер, экран результата ответа (не дублировать накопление в renderAnswerResult), state.score/gamesPlayed, никаких уровней/формул.
+
+**Результат / расхождения:**
+- **Тронуты:** `js/main.js` (XP_PER_CORRECT, STORAGE.xpTotal, state.xpTotal/xpEarnedThisGame, loadFromStorage, startGame, handleAnswer, endGame, init, импорт), `js/ui.js` (renderXpTotal, renderGameXp), `index.html` (`.xp-total` на старте, `.game-xp` на результате), `css/style.css` (`.xp-total`, `.game-xp`), `CLAUDE.md` (статус + ключ localStorage).
+- **Сделано ровно по промпту, отклонений нет.** Накопление в `renderAnswerResult` не дублировал, подсказку/рекорды/таймер не трогал, никаких условий с `hintUsed`.
+- **Проверено в браузере (preview :5500):** старт с чистого localStorage → «Опыт: 0»; партия 5 вопросов, 2 верных → «за партию 20», «всего 20», `geogame:xpTotal="20"`; возврат на старт → «Опыт: 20»; вторая партия, 1 верный → «за партию 10» (сброс per-game), «всего 30», LS «30»; после reload → старт показывает «Опыт: 30» (loadFromStorage). Ошибок в консоли нет.
+- **На что смотреть при проверке:** XP общий на все режимы (переключение режима счётчик не обнуляет); «Получено за партию» = только за текущую (сбрасывается в startGame), «Всего» — накопительно. Подсказка XP не режет — это by design (в коде нет ветки на hintUsed).
+
+---
+
 ## 2026-05-24 #4 | Техдолг: разделение зон Cowork/Claude Code, коммит .md, доменные факты, cache-busting
 
 **Цель:** закрыть техдолг по результатам саморефлексии Claude Code: убрать парадокс «журнал не закоммичен», разнести спеку и статус, добавить cache-busting, зафиксировать доменные факты и правила git. Cowork сделал документную часть, Claude Code делает git-часть, дополнение доменных фактов и сверку статуса.

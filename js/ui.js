@@ -106,6 +106,15 @@ export function renderGamesPlayed(n) {
   document.getElementById("games-played").textContent = String(n);
 }
 
+export function renderXpTotal(n) {
+  document.getElementById("xp-total").textContent = String(n);
+}
+
+export function renderGameXp(earned, total) {
+  document.getElementById("game-xp-earned").textContent = String(earned);
+  document.getElementById("game-xp-total").textContent = String(total);
+}
+
 export function setStartButtonReady(ready) {
   const btn = getStartButton();
   btn.disabled = !ready;
