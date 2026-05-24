@@ -148,6 +148,30 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
   if (prompt.type === "text") {
     flagEl.classList.add("text-prompt");
     flagEl.textContent = prompt.text;
+  } else if (prompt.type === "coa") {
+    flagEl.classList.remove("text-prompt");
+    const country = prompt.country;
+    const coa = country.coatOfArms || {};
+    const sources = [coa.svg, coa.png].filter(Boolean);
+    if (sources.length) {
+      const img = document.createElement("img");
+      img.className = "coa-img";
+      img.alt = country.cca2 || "";
+      let i = 0;
+      img.onerror = () => {
+        i++;
+        if (i < sources.length) {
+          img.src = sources[i];
+        } else {
+          img.onerror = null;
+          flagEl.textContent = "🏛";
+        }
+      };
+      img.src = sources[0];
+      flagEl.appendChild(img);
+    } else {
+      flagEl.textContent = "🏛";
+    }
   } else {
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;

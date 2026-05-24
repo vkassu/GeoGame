@@ -325,6 +325,14 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   display: block;
   border: 1px solid #ddd;
 }
+.coa-img {
+  max-height: 180px;
+  max-width: 100%;
+  width: auto;
+  display: block;
+  margin: 0 auto;
+  object-fit: contain;
+}
 .flag-big.text-prompt {
   max-width: none;
   font-size: 36px;

@@ -1,6 +1,20 @@
 // Точка входа: игровая логика, state и единственное место работы с localStorage.
 
-import { fetchCountries, hasCapital, capitalName, ruName } from "./data.js";
+import {
+  fetchCountries,
+  hasCapital,
+  capitalName,
+  ruName,
+  populationFormatted,
+  areaFormatted,
+  languageName,
+  hasLanguages,
+  currencyName,
+  hasCurrencies,
+  nativeNameStr,
+  hasNativeName,
+  hasCoatOfArms,
+} from "./data.js";
 import {
   showScreen,
   getPlayAgainButton,
@@ -54,6 +68,48 @@ const TOPICS = {
     prompt: (c) => ({ type: "text", text: capitalName(c) }),
     answer: ruName,
     valid: hasCapital,
+  },
+  population: {
+    label: "Население",
+    question: "Каково население этой страны?",
+    prompt: (c) => ({ type: "flag", country: c }),
+    answer: populationFormatted,
+    valid: (c) => c.population > 0,
+  },
+  area: {
+    label: "Площадь",
+    question: "Какова площадь этой страны?",
+    prompt: (c) => ({ type: "flag", country: c }),
+    answer: areaFormatted,
+    valid: (c) => c.area > 0,
+  },
+  language: {
+    label: "Язык",
+    question: "Какой официальный язык этой страны?",
+    prompt: (c) => ({ type: "flag", country: c }),
+    answer: languageName,
+    valid: hasLanguages,
+  },
+  currency: {
+    label: "Валюта",
+    question: "Какая валюта этой страны?",
+    prompt: (c) => ({ type: "flag", country: c }),
+    answer: currencyName,
+    valid: hasCurrencies,
+  },
+  nativeName: {
+    label: "Самоназвание",
+    question: "Название какой страны это на родном языке?",
+    prompt: (c) => ({ type: "text", text: nativeNameStr(c) }),
+    answer: ruName,
+    valid: hasNativeName,
+  },
+  coatOfArms: {
+    label: "Герб",
+    question: "Что это за страна?",
+    prompt: (c) => ({ type: "coa", country: c }),
+    answer: ruName,
+    valid: hasCoatOfArms,
   },
 };
 
