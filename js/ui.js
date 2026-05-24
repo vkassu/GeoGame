@@ -151,11 +151,23 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
   } else {
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;
-    const svg = country.flags && country.flags.svg;
-    if (svg) {
+    const flags = country.flags || {};
+    const sources = [flags.svg, flags.png].filter(Boolean);
+    if (sources.length) {
       const img = document.createElement("img");
-      img.src = svg;
       img.alt = country.cca2 || "";
+      let i = 0;
+      // Фолбэк при ошибке загрузки: svg → png → эмодзи (чтобы не оставалась битая картинка).
+      img.onerror = () => {
+        i++;
+        if (i < sources.length) {
+          img.src = sources[i];
+        } else {
+          img.onerror = null;
+          flagEl.textContent = codeToEmoji(country.cca2);
+        }
+      };
+      img.src = sources[0];
       flagEl.appendChild(img);
     } else {
       flagEl.textContent = codeToEmoji(country.cca2);

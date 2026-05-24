@@ -119,7 +119,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - Названия стран: `translations.rus.common` — русский, есть для всех 250 стран.
 - Столицы в API — **только английские**. Русский словарь — `data/capitals_ru.json` (ключ `cca2`).
 - Покрытие `capitals_ru.json` — все 246 столиц из API. Стран без столицы (`hasCapital` false) — 4. Фильтрация по столице игроков из игры не выкидывает.
-- Флаги — `flags.svg` (URL внешний, не файл в репо).
+- Флаги — `flags.svg` / `flags.png` (внешний CDN flagcdn.com, не файл в репо). Может транзиентно не загрузиться → `renderQuestion` откатывается `svg → png → эмодзи` (`onerror`-цепочка), чтобы не оставалась битая картинка.
 - `country.region` — одно из `Europe / Asia / Africa / Americas / Oceania` (+ `Antarctic` — 5 сущностей, не используем). **Запрашивается через `?fields=...,region`** — без этого поля `country.region` приходит `undefined` и фильтр по регионам не работает (грабли из задачи #6). Распределение: Africa 59, Americas 56, Europe 53, Asia 50, Oceania 27.
 
 **Окружение:**
