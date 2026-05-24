@@ -149,12 +149,19 @@ function regionPoolCountries() {
   return state.allCountries.filter((c) => allowed.has(c.region));
 }
 
-// Страны, по которым реально можно задать хотя бы один из выбранных вопросов.
-function usablePoolCountries() {
+// Все валидные пары (страна, тема) под выбранные регионы и темы — это и есть «реальные вопросы».
+// Одна страна даёт столько вопросов, сколько выбранных тем для неё валидны.
+function questionPairs() {
   const topics = state.setup.topics;
-  return regionPoolCountries().filter((c) =>
-    topics.some((tk) => TOPICS[tk] && TOPICS[tk].valid(c))
-  );
+  const pairs = [];
+  for (const country of regionPoolCountries()) {
+    for (const tk of topics) {
+      if (TOPICS[tk] && TOPICS[tk].valid(country)) {
+        pairs.push({ country, topicKey: tk });
+      }
+    }
+  }
+  return pairs;
 }
 
 // ---------- экран настройки (Шаги 1–3) ----------
@@ -195,22 +202,16 @@ function setAllTopics(on) {
   refreshSetupUI();
 }
 
-function updateStartEnabled() {
-  const ok =
-    state.dataLoaded &&
-    state.setup.regions.length > 0 &&
-    state.setup.topics.length > 0;
-  setNavButtonEnabled("regions-next", ok);
-}
-
 // Перерисовывает оба экрана настройки (регионы + темы), счётчик доступных и кнопку «Начало».
 function refreshSetupUI() {
   const regionItems = Object.keys(REGIONS).map((k) => ({ key: k, label: REGIONS[k].label }));
   const topicItems = Object.keys(TOPICS).map((k) => ({ key: k, label: TOPICS[k].label }));
   renderRegionGrid(regionItems, new Set(state.setup.regions), toggleRegion);
   renderTopicList(topicItems, new Set(state.setup.topics), toggleTopic);
-  renderAvailableCount(state.dataLoaded ? usablePoolCountries().length : "—");
-  updateStartEnabled();
+  const available = state.dataLoaded ? questionPairs().length : null;
+  renderAvailableCount(available === null ? "—" : available);
+  // «Начало» активна только если есть хотя бы один реальный вопрос.
+  setNavButtonEnabled("regions-next", state.dataLoaded && available > 0);
 }
 
 function selectQuestionCountAndStart(n) {
@@ -248,27 +249,21 @@ function buildOptions(correctCountry, topic) {
 
 function startGame() {
   state.regionPool = regionPoolCountries();
-  const topics = state.setup.topics.slice();
-  const usable = usablePoolCountries();
+  const pairs = questionPairs();
 
-  if (usable.length === 0) {
+  if (pairs.length === 0) {
     alert("Нет вопросов под выбранные настройки. Измените регионы или темы.");
     return;
   }
 
   let count = state.setup.questionCount;
-  if (count > usable.length) {
-    if (!confirm(`Доступно только ${usable.length} вопросов. Продолжить?`)) return;
-    count = usable.length;
+  if (count > pairs.length) {
+    if (!confirm(`Доступно только ${pairs.length} вопросов. Продолжить?`)) return;
+    count = pairs.length;
   }
 
-  // По одной стране на вопрос (без повторов), тема — случайная из валидных для страны.
-  const chosen = sample(usable, count);
-  state.questions = chosen.map((country) => {
-    const validTopics = topics.filter((tk) => TOPICS[tk].valid(country));
-    const topicKey = validTopics[Math.floor(Math.random() * validTopics.length)];
-    return { country, topicKey };
-  });
+  // Вопрос = уникальная пара (страна, тема). Одна страна может попасть под разными темами.
+  state.questions = sample(pairs, count);
 
   state.currentQuestion = 0;
   state.score = 0;
