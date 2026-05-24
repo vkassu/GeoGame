@@ -11,6 +11,9 @@ import {
   setSelectedMode,
   setModeText,
   getHomeButton,
+  getHintButton,
+  setHintButtonState,
+  applyHintToOptions,
   renderAnswerResult,
   showAnswerResult,
   hideAnswerResult,
@@ -80,6 +83,9 @@ const state = {
   score: 0,
   isGameOver: false,
   timerId: null,
+  hintUsed: false,
+  currentButtons: [],
+  currentCorrect: "",
 };
 
 function loadBestScore(mode) {
@@ -140,6 +146,9 @@ function startGame() {
   state.currentQuestion = 0;
   state.score = 0;
   state.isGameOver = false;
+  state.hintUsed = false;
+  state.currentButtons = [];
+  state.currentCorrect = "";
   state.screen = "game";
   showScreen(state.screen);
   showQuestion(0);
@@ -188,15 +197,28 @@ function showQuestion(index) {
     questionText: mode.question,
   });
 
+  state.currentButtons = buttons;
+  state.currentCorrect = correct;
+
   for (const entry of buttons) {
     entry.button.addEventListener("click", () => {
       handleAnswer(entry, buttons, correct);
     });
   }
+
+  setHintButtonState(!state.hintUsed);
+}
+
+function handleHintClick() {
+  if (state.hintUsed) return;
+  state.hintUsed = true;
+  applyHintToOptions(state.currentButtons, state.currentCorrect);
+  setHintButtonState(false);
 }
 
 function handleAnswer(picked, allButtons, correct) {
   clearTimer();
+  setHintButtonState(false);
   const isCorrect = picked.value === correct;
   if (isCorrect) state.score++;
 
@@ -220,7 +242,6 @@ function onAnswerResultClick() {
   if (state.currentQuestion >= state.questions.length) {
     endGame();
   } else {
-    document.getElementById("q-score").textContent = `Счёт: ${state.score}`;
     showQuestion(state.currentQuestion);
   }
 }
@@ -269,6 +290,7 @@ async function init() {
   getStartButton().addEventListener("click", startGame);
   getPlayAgainButton().addEventListener("click", goToStart);
   getHomeButton().addEventListener("click", goHome);
+  getHintButton().addEventListener("click", handleHintClick);
   document.getElementById("answer-result").addEventListener("click", onAnswerResultClick);
   document.getElementById("report-btn").addEventListener("click", (e) => {
     e.stopPropagation();

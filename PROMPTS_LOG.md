@@ -45,17 +45,35 @@
 
 **Цель:** добавить в строку управления игрового экрана синюю кнопку «Подсказка». Тап → 2 случайных неверных ответа из 4 скрываются через `visibility: hidden` (сетка 2×2 сохраняется). Одна подсказка на партию, после использования кнопка остаётся видимой, но серая и disabled. Сбрасывается в `startGame`.
 
-**Статус:** передан
+**Статус:** выполнен
 
-**Проверено в браузере:** нет
+**Проверено в браузере:** да (preview :5500, 1000×800)
 
 **Автор промпта:** Cowork
 
-**Промпт:**
+**Промпт (полный текст, передан в терминал 2026-05-24):**
 
-> *(см. полный текст в чате Cowork от 2026-05-24 — промпт «Реализуй кнопку Подсказка в игровом экране GeoGame». Изменения в index.html, css/style.css, js/ui.js, js/main.js. Стиль кнопки — как `.option-btn`, но компактнее (padding 6px 18px, font-size 14px, border-radius 12px). Скрытие вариантов через `visibility: hidden`, не `display: none`, чтобы сетка не схлопывалась. В state добавляется `hintUsed: boolean` и `currentButtons` / `currentCorrect`. Счёт `#q-score` удаляется из строки управления — остаётся только в результате партии.)*
+> Реализуй кнопку «Подсказка» в игровом экране GeoGame.
+>
+> **Продуктовое описание.** Кнопка «Подсказка» появляется в строке управления над вопросом, между [Время] и [Вопрос X из Y]. Тап → 2 случайных неверных варианта из 4 пропадают, остаются правильный + 1 неверный. После использования кнопка остаётся видимой, но становится серой и неактивной до конца партии. На партию даётся одна подсказка. Сбрасывается при старте новой партии. Это MVP — без счётчика, без localStorage, без подсказок по сложности.
+>
+> **1. index.html** — в `.meta` (game-screen): удалить `<span id="q-score">` целиком; между `#q-timer` и `#q-counter` вставить `<button id="hint-btn" class="hint-btn" type="button">Подсказка</button>`. Порядок: [#q-timer] [#hint-btn] [#q-counter].
+>
+> **2. css/style.css** — `.hint-btn`: стиль как `.option-btn` (синий градиент `#4fc3f7→#0288d1`, рамка `#b0bec5`, белый жирный текст), но `padding: 6px 18px; font-size: 14px; border-radius: 12px; min-height: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3)`. Hover (не disabled) — `filter: brightness(1.15)`, active — `transform: scale(0.97)`. `.hint-btn:disabled` — `filter: grayscale(1); opacity: 0.45; cursor: not-allowed`, снять hover. В `.meta` — `align-items: center`, сохранить `justify-content: space-between`.
+>
+> **3. js/ui.js** — экспортировать `getHintButton()`, `setHintButtonState(enabled)` (disabled = !enabled), `applyHintToOptions(buttons, correctValue)` (находит 3 неверные кнопки, случайно скрывает 2 через `style.visibility = "hidden"`, сетка 2×2 сохраняется). `renderQuestion` не менять.
+>
+> **4. js/main.js** — в state добавить `hintUsed: false`; в `startGame()` сброс `state.hintUsed = false`. Импортировать `getHintButton`, `setHintButtonState`, `applyHintToOptions`. В `showQuestion` сохранить массив `buttons` и `correct` (предложено в `state.currentButtons`/`state.currentCorrect`), в конце вызвать `setHintButtonState(!state.hintUsed)`. Функция `handleHintClick()`: если `hintUsed` → return; иначе `hintUsed = true`, `applyHintToOptions(state.currentButtons, state.currentCorrect)`, `setHintButtonState(false)`. В `init()` повесить листенер. В `handleAnswer` тоже `setHintButtonState(false)`.
+>
+> **Краевые случаи:** подсказка не работает на экране результата (`.meta` скрыта); двойной клик отбивается флагом `hintUsed`; сброс при новой партии. **Не трогать:** `.option-btn`, таймер, экран результата, data.js, localStorage. Счёт убрать из строки управления, но `state.score` оставить (показывается на экране результата партии).
+>
+> Перед работой — запись в PROMPTS_LOG.md (статус «передан»), после — «выполнен» + результат. После: какие файлы тронул, что неочевидно, на что смотреть при проверке.
 
-**Результат / расхождения:** ожидается отчёт от Claude Code.
+**Результат / расхождения:**
+- **Тронуты:** `index.html` (кнопка в `.meta`, удалён `#q-score`), `css/style.css` (`.hint-btn` + `.meta align-items:center`), `js/ui.js` (`getHintButton`/`setHintButtonState`/`applyHintToOptions`, убрана строка обновления `#q-score`), `js/main.js` (`state.hintUsed`/`currentButtons`/`currentCorrect`, сброс в `startGame`, `handleHintClick`, листенер в `init`, `setHintButtonState(false)` в `handleAnswer`, сохранение buttons/correct в `showQuestion`).
+- **Реализовано как просили:** через замыкание не пошёл — храню текущие кнопки и правильный ответ в `state.currentButtons`/`state.currentCorrect` (как и предлагалось в промпте, вариант «чище»). Скрытие — `visibility: hidden`, сетка 2×2 цела.
+- **Вынужденное отклонение (следствие удаления `#q-score`):** удалил две JS-строки, которые писали в `#q-score` (в `ui.js renderQuestion` и `main.js onAnswerResultClick`) — иначе `null.textContent` уронил бы игру. `state.score` нетронут, на экране результата партии счёт показывается как прежде. Параметр `score` в `renderQuestion` остался в сигнатуре, но больше не используется — не стал менять сигнатуру, чтобы не выходить за рамки.
+- **Проверено в браузере:** порядок `.meta` = [таймер][подсказка][счётчик]; подсказка скрывает ровно 2 неверных, правильный всегда остаётся (проверено — «Словакия» осталась видимой); двойной клик отбивается; кнопка серая/disabled после использования; на следующем вопросе остаётся disabled (одна на партию), варианты снова все 4; новая партия — подсказка снова активна. Ошибок в консоли нет.
 
 ---
 

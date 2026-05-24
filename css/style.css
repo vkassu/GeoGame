@@ -163,9 +163,32 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .meta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   color: #555;
   font-size: 14px;
   margin-bottom: 8px;
+}
+
+.hint-btn {
+  padding: 6px 18px;
+  background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+  border: 2px solid #b0bec5;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px;
+  min-height: auto;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter .15s, transform .1s;
+}
+.hint-btn:hover:not(:disabled) { filter: brightness(1.15); }
+.hint-btn:active:not(:disabled) { transform: scale(0.97); }
+.hint-btn:disabled {
+  filter: grayscale(1);
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .q-timer {

@@ -25,6 +25,27 @@ export function getHomeButton() {
   return document.getElementById("home-btn");
 }
 
+export function getHintButton() {
+  return document.getElementById("hint-btn");
+}
+
+export function setHintButtonState(enabled) {
+  getHintButton().disabled = !enabled;
+}
+
+// Прячет 2 случайных неверных варианта из 4 (через visibility, чтобы сетка 2×2 не схлопнулась).
+export function applyHintToOptions(buttons, correctValue) {
+  const wrong = buttons.filter((b) => b.value !== correctValue);
+  // перемешиваем неверные и прячем первые два
+  for (let i = wrong.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [wrong[i], wrong[j]] = [wrong[j], wrong[i]];
+  }
+  wrong.slice(0, 2).forEach((b) => {
+    b.button.style.visibility = "hidden";
+  });
+}
+
 export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
   const banner = document.getElementById("answer-banner");
   banner.className = "answer-banner " + (isCorrect ? "correct" : "wrong");
@@ -116,7 +137,6 @@ export function renderQuestion({ prompt, options, questionNumber, total, score, 
   }
 
   document.getElementById("q-counter").textContent = `Вопрос ${questionNumber} из ${total}`;
-  document.getElementById("q-score").textContent = `Счёт: ${score}`;
   document.getElementById("progress-bar").style.width = `${(questionNumber / total) * 100}%`;
 
   const optsEl = document.getElementById("options");
