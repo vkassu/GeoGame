@@ -3,11 +3,13 @@
 // При успехе — обновляем CSS-переменную, псевдоэлемент body::after перерисовывается.
 // При ошибке — остаётся локальный fallback из :root { --earth-bg }.
 
+// Лёгкие живые thumb-ширины Wikimedia (только фиксированные bucket-ширины
+// отдают 200: 1280/1920 ок, 2048/2560/4096 → HTTP 400). Оригинал 3000×3000 —
+// 5.5 МБ на каждый заход, дорого для мобильного трафика и почти не отличим от
+// локального 2048px → не используем; берём 1920px (~750 КБ), запасной 1280px (~385 КБ).
 const REMOTE_URLS = [
-  // Blue Marble (remastered), оригинал 3000×3000 (~5.5 МБ) — настоящая сфера, апгрейд над локальным 2048px
-  "https://upload.wikimedia.org/wikipedia/commons/c/cb/The_Blue_Marble_%28remastered%29.jpg",
-  // Запасной: тот же снимок, лёгкий thumb 1920px (~750 КБ)
   "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/The_Blue_Marble_%28remastered%29.jpg/1920px-The_Blue_Marble_%28remastered%29.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/The_Blue_Marble_%28remastered%29.jpg/1280px-The_Blue_Marble_%28remastered%29.jpg",
 ];
 
 export function initEarthBackground() {

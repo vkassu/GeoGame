@@ -45,12 +45,6 @@ export function officialName(country) {
     && country.translations.rus.official) || "";
 }
 
-export function capital(country) {
-  return Array.isArray(country.capital) && country.capital.length
-    ? country.capital.join(", ")
-    : "—";
-}
-
 export function hasCapital(country) {
   return Array.isArray(country.capital) && country.capital.length > 0;
 }
@@ -62,11 +56,6 @@ export function capitalName(country) {
   return Array.isArray(country.capital) && country.capital.length
     ? country.capital[0]
     : "";
-}
-
-export function population(country) {
-  const n = country.population;
-  return typeof n === "number" ? n.toLocaleString("ru-RU") : "—";
 }
 
 // Население — форматированная строка

@@ -154,7 +154,6 @@ const STORAGE = {
 
 const state = {
   screen: "start",
-  lang: "ru",
   user: null,              // { uid, name, photo } или null (гость)
   gamesPlayed: 0,
   allCountries: [],
@@ -182,9 +181,6 @@ function loadFromStorage() {
   const savedLang = localStorage.getItem(STORAGE.lang);
   if (savedLang === "ru" || savedLang === "en") {
     setLang(savedLang);
-    state.lang = savedLang;
-  } else {
-    state.lang = "ru";
   }
 
   state.gamesPlayed = Number(localStorage.getItem(STORAGE.gamesPlayed)) || 0;
@@ -538,7 +534,6 @@ function goHome() {
 function switchLang() {
   const next = getLang() === "ru" ? "en" : "ru";
   setLang(next);
-  state.lang = next;
   localStorage.setItem(STORAGE.lang, next);
   updateLangButton();
   applyI18n();

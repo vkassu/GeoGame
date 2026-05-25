@@ -18,6 +18,28 @@
 
 ---
 
+## 2026-05-25 #17 | Быстрые правки по самоаудиту: redirect-вход, лёгкий фон, чистка мёртвого кода
+
+**Цель:** закрыть 4 пункта из самоаудита кода: #1 popup→redirect для входа (баг на iOS Safari), #3 фон 5.5 МБ → 1920px thumb, #7 удалить мёртвые `capital()`/`population()`, #8 удалить неиспользуемое `state.lang`.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500) — кроме живого redirect-входа (навигация на Google, проверяется только на деплое/iPad).
+
+**Автор промпта:** Cowork (по итогам самоаудита Claude Code)
+
+**Промпт:** [сжато: #1 в firebase.js заменить `signInWithPopup` на `signInWithRedirect` + `getRedirectResult`; #3 в bg.js сделать основным URL 1920px thumb (~750 КБ) вместо оригинала 5.5 МБ; #7 удалить `capital()`/`population()` из data.js; #8 удалить `state.lang`.]
+
+**Результат / расхождения:**
+- **#1 (redirect):** в `firebase.js` импорт `signInWithPopup` → `signInWithRedirect, getRedirectResult`; `signInWithGoogle()` теперь `signInWithRedirect(auth, provider)`; добавлен `getRedirectResult(auth).catch(...)` при загрузке модуля (подхватывает результат/ошибку после возврата с Google). Причина: popup блокируется/зависает в Safari на iOS/iPadOS и во встроенных WebView — целевое устройство iPad. **Живой вход через redirect НЕ проверяется в preview** (уводит на Google) — нужна проверка на деплое и особенно на iPad.
+- **#3 (фон):** `REMOTE_URLS` теперь `[1920px (~750 КБ), 1280px (~385 КБ)]` — оба живые bucket-ширины Wikimedia; оригинал 3000×3000 (5.5 МБ) убран. Проверено: грузится именно 1920px (200), 5.5 МБ оригинал больше не запрашивается.
+- **#7 (мёртвый код):** удалены `export function capital()` и `export function population()` из data.js — не использовались нигде (подтверждено grep до и после). `capitalName`/`populationFormatted`/`getCapital`/`getPopulationFormatted` не тронуты.
+- **#8 (state.lang):** удалено объявление `lang: "ru"` из `state` и 3 присваивания (`loadFromStorage` ×2, `switchLang`). Источник правды по языку — `getLang()` из i18n.js; `state.lang` только писался, не читался. `else`-ветка в `loadFromStorage` убрана (дефолт `setLang` уже "ru").
+- **Тронуты:** `js/firebase.js`, `js/bg.js`, `js/data.js`, `js/main.js`, `index.html` (cache-bust `20260535 → 20260536`), `CLAUDE.md`, `PROMPTS_LOG.md` (эта запись).
+- **Проверено в браузере:** `--earth-bg` = 1920px URL (200); кнопка «Войти через Google» на месте (`display:flex`); переключение языка работает; игра грузится (733 вопроса); консоль чистая; firebase.js + 3 модуля Firebase грузятся 200; `getRedirectResult` без ошибок (нет ожидающего редиректа → null).
+
+---
+
 ## 2026-05-25 #16 | Энциклопедия: экран «Информация» о стране
 
 **Цель:** экран карточки страны по кнопке «Информация» на экране результата ответа — флаг, официальное название, регион, столица, население, площадь, язык, валюта, герб; RU/EN; «← Назад» возвращает к результату ответа без потери хода.
