@@ -46,6 +46,7 @@ import {
   renderBestXp,
   renderAvailableCount,
   setNavButtonEnabled,
+  renderInfoScreen,
 } from "./ui.js";
 import { initEarthBackground } from "./bg.js";
 import { onUserChanged, signInWithGoogle, signOutUser,
@@ -456,6 +457,38 @@ function onAnswerResultClick() {
   }
 }
 
+// ---------- экран «Информация» о стране ----------
+
+function getRegionLabel(country) {
+  const entry = Object.values(REGIONS).find((r) => r.apiValue === country.region);
+  return entry ? entry.label : (country.region || "");
+}
+
+// Открыть карточку страны текущего вопроса (кнопка «Информация» на экране ответа).
+function showInfo() {
+  const q = state.questions[state.currentQuestion];
+  if (!q) return;
+  const country = q.country;
+
+  // Вычисленные (lang-aware) значения как временные поля — UI-слой их только читает.
+  country._displayName = getName(country);
+  country._capital     = getCapital(country);
+  country._population  = getPopulationFormatted(country);
+  country._area        = getAreaFormatted(country);
+  country._language    = hasLanguages(country) ? languageName(country) : null;
+  country._currency    = hasCurrencies(country) ? currencyName(country) : null;
+  country._nativeName  = hasNativeName(country) ? nativeNameStr(country) : null;
+
+  renderInfoScreen(country, getRegionLabel(country));
+  showScreen("info");
+}
+
+// Возврат к результату ответа — партия не прерывается.
+function goBackFromInfo() {
+  showScreen("game");
+  showAnswerResult();
+}
+
 function endGame() {
   clearTimer();
   state.isGameOver = true;
@@ -619,8 +652,10 @@ async function init() {
   });
   document.getElementById("info-btn").addEventListener("click", (e) => {
     e.stopPropagation();
-    console.log("Информация: не реализовано");
+    showInfo();
   });
+  document.getElementById("info-back-btn")
+    ?.addEventListener("click", goBackFromInfo);
   document.getElementById("end-btn").addEventListener("click", (e) => {
     e.stopPropagation();
     if (confirm(t("alert.end-early"))) endGame();

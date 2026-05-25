@@ -35,6 +35,16 @@ export function engName(country) {
   return (country.name && country.name.common) || "";
 }
 
+// Официальное название страны на текущем языке.
+export function officialName(country) {
+  if (getLang() === "en") {
+    return (country.name && country.name.official) || "";
+  }
+  return (country.translations
+    && country.translations.rus
+    && country.translations.rus.official) || "";
+}
+
 export function capital(country) {
   return Array.isArray(country.capital) && country.capital.length
     ? country.capital.join(", ")

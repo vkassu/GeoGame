@@ -18,6 +18,29 @@
 
 ---
 
+## 2026-05-25 #16 | Энциклопедия: экран «Информация» о стране
+
+**Цель:** экран карточки страны по кнопке «Информация» на экране результата ответа — флаг, официальное название, регион, столица, население, площадь, язык, валюта, герб; RU/EN; «← Назад» возвращает к результату ответа без потери хода.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500, 1000×800) — полный прогон EN + RU, страна с гербом и без.
+
+**Автор промпта:** Cowork
+
+**Промпт:** [сжато — полный текст в истории Cowork. Суть: Шаг 1 — 9 строк `info.*` в i18n (ru/en); Шаг 2 — геттер `officialName(country)` в data.js (lang-aware, `name.official`/`translations.rus.official`); Шаг 3 — секция `#info-screen` в index.html между game и result; Шаг 4 — `renderInfoScreen(country, regionLabel)` в ui.js (читает временные поля `country._*`); Шаг 5 — `getRegionLabel`/`showInfo`/`goBackFromInfo` в main.js, замена заглушки `info-btn`, слушатель `info-back-btn`; Шаг 6 — CSS `.info-*`; Шаг 7 — cache-busting + доки. Не трогать игровую логику/таймер/подсказку/XP/Firebase/bg.js.]
+
+**Результат / расхождения:**
+- **Два чистящих отклонения от буквального промпта (без изменения поведения, согласуются с самоаудитом про «без мёртвого кода»):**
+  1. В `renderInfoScreen` **выброшен no-op блок** `import("./data.js").then(({getName}) => { /* no-op */ })` — он ничего не делал (автор сам пометил `no-op`), а добавлял лишний динамический импорт на каждый рендер карточки.
+  2. В `main.js` **не добавлял неиспользуемые импорты.** Step 5 предлагал дописать в импорт из data.js `officialName/populationFormatted/areaFormatted/...`, но `showInfo()` использует только уже импортированные геттеры (`getName/getCapital/getPopulationFormatted/getAreaFormatted/hasLanguages/languageName/hasCurrencies/currencyName/hasNativeName/nativeNameStr`); `officialName` нужен только в ui.js. Добавил в main.js единственный новый импорт — `renderInfoScreen` из ui.js.
+- **Тронуты:** `js/i18n.js` (9 строк `info.*` ×2 языка), `js/data.js` (`officialName`), `index.html` (`#info-screen` + cache-bust `20260534 → 20260535`), `js/ui.js` (импорт `officialName` + `renderInfoScreen`), `js/main.js` (импорт `renderInfoScreen`; `getRegionLabel`/`showInfo`/`goBackFromInfo`; `info-btn` → `showInfo`; слушатель `info-back-btn`), `css/style.css` (блок `.info-*`), `CLAUDE.md` (Сделано + удалён пункт «Энциклопедия» из «Дальше»), `PROMPTS_LOG.md` (эта запись).
+- **Архитектура:** UI-слой чист — `renderInfoScreen` читает вычисленные `country._*`, бизнес-логику (lang-aware геттеры) дёргает `showInfo` в main.js. `goBackFromInfo` = `showScreen("game") + showAnswerResult()` — возвращает ровно то же состояние экрана ответа.
+- **Проверено в браузере:** EN — Northern Mariana Islands: флаг (flagcdn), official «Commonwealth of the Northern Mariana Islands», строки Region/Capital/Population/Area/Language/Currency/Native name, блок герба скрыт (у территории нет coa — `hasCoatOfArms` false). «← Назад» → экран ответа (options скрыты, answer-result показан), счётчик «Question 1 of 10» не сменился → клик по баннеру → «Question 2 of 10». RU — Чад: official «Республика Чад», регион «Африка», все метки строк по-русски, герб найден и загружен (mainfacts.com), кнопка «← Назад». Консоль чистая.
+- **Мелочь (не баг):** `showInfo` пишет временные поля прямо в объект страны из `state.allCountries` (`country._displayName` и т.п.) — перезаписываются при каждом открытии, читаются синхронно, побочных эффектов нет. Самоназвание иногда совпадает с англ. общим названием (квирк данных API, не нашей логики).
+
+---
+
 ## 2026-05-25 #15 | Firebase Auth: аккаунты через Google + синхронизация XP
 
 **Цель:** авторизация через Google (Gmail); XP/рекорд/число партий привязываются к аккаунту и синхронизируются с Firestore. Без логина — гостевой режим (localStorage). Первый вход мигрирует гостевые данные в аккаунт.

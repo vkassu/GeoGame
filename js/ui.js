@@ -1,7 +1,7 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji } from "./data.js";
+import { codeToEmoji, officialName } from "./data.js";
 import { t } from "./i18n.js";
 
 export function showScreen(name) {
@@ -217,6 +217,88 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
 
 export function markAnswer(btn, kind) {
   btn.classList.add(kind === "correct" ? "correct" : "wrong");
+}
+
+// Экран «Информация» о стране. Значения берутся из временных полей country._*,
+// которые main.js вычисляет (lang-aware) перед вызовом — UI-слой не дёргает бизнес-логику.
+export function renderInfoScreen(country, regionLabel) {
+  // --- Флаг ---
+  const flagEl = document.getElementById("info-flag");
+  flagEl.innerHTML = "";
+  const flags = country.flags || {};
+  const sources = [flags.svg, flags.png].filter(Boolean);
+  if (sources.length) {
+    const img = document.createElement("img");
+    img.alt = country.cca2 || "";
+    let i = 0;
+    img.onerror = () => {
+      i++;
+      if (i < sources.length) { img.src = sources[i]; }
+      else { img.onerror = null; flagEl.textContent = codeToEmoji(country.cca2); }
+    };
+    img.src = sources[0];
+    flagEl.appendChild(img);
+  } else {
+    flagEl.textContent = codeToEmoji(country.cca2);
+  }
+
+  // --- Имена ---
+  document.getElementById("info-name").textContent =
+    (country._displayName) || country.cca2;
+  const off = officialName(country);
+  const offEl = document.getElementById("info-official");
+  offEl.textContent = off;
+  offEl.style.display = off ? "" : "none";
+
+  // --- Строки данных ---
+  const rows = document.getElementById("info-rows");
+  rows.innerHTML = "";
+
+  function addRow(labelKey, value) {
+    if (!value || value === "—") return;
+    const div = document.createElement("div");
+    div.className = "info-row";
+    const lbl = document.createElement("span");
+    lbl.className = "info-row-label";
+    lbl.textContent = t(labelKey);
+    const val = document.createElement("span");
+    val.className = "info-row-value";
+    val.textContent = value;
+    div.append(lbl, val);
+    rows.appendChild(div);
+  }
+
+  addRow("info.region",     regionLabel);
+  addRow("info.capital",    country._capital   || "—");
+  addRow("info.population", country._population || "—");
+  addRow("info.area",       country._area      || "—");
+  addRow("info.language",   country._language  || "—");
+  addRow("info.currency",   country._currency  || "—");
+  if (country._nativeName) addRow("info.native", country._nativeName);
+
+  // --- Герб ---
+  const coaBlock = document.getElementById("info-coa-block");
+  const coaImg   = document.getElementById("info-coa-img");
+  const coa = country.coatOfArms || {};
+  const coaSrcs = [coa.svg, coa.png].filter(Boolean);
+  if (coaSrcs.length) {
+    coaBlock.style.display = "";
+    document.querySelector("[data-i18n='info.coa']").textContent = t("info.coa");
+    coaImg.innerHTML = "";
+    const img = document.createElement("img");
+    img.className = "coa-img";
+    img.alt = "";
+    let i = 0;
+    img.onerror = () => {
+      i++;
+      if (i < coaSrcs.length) { img.src = coaSrcs[i]; }
+      else { img.onerror = null; coaImg.textContent = "🏛"; }
+    };
+    img.src = coaSrcs[0];
+    coaImg.appendChild(img);
+  } else {
+    coaBlock.style.display = "none";
+  }
 }
 
 export function renderResult(score, total) {
