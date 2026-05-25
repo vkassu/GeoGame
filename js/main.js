@@ -52,7 +52,7 @@ import {
   showLevelUpBanner,
   hideLevelUpBanner,
   renderMenuProfile,
-} from "./ui.js?v=20260541";
+} from "./ui.js?v=20260542";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
