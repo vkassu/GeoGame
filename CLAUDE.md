@@ -14,7 +14,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 
 Эффективный набор полей: `name, translations, capital, population, flags, cca2, region, languages, currencies, area, coatOfArms`. Это 11 полей, а `/all` ограничивает запрос 10 → `fetchCountries` делает **два запроса** (`API_URL` 7 полей + `API_EXTRAS_URL` 5 полей, оба с `cca2`) и сливает по `cca2`. Языки (`languages`) и валюты (`currencies`) API отдаёт **только на английском** — в темах «Язык»/«Валюта» ответы остаются английскими в обоих языковых режимах.
 
-Фон-глобус — реальный спутниковый снимок NASA `img/earth.jpg` (Public Domain), подключается через CSS `body::after` (не через JS).
+Фон-глобус: по умолчанию `img/earth.jpg` (сферическое фото Blue Marble, NASA Public Domain, 2048×2048), подключается через CSS `body::after` по переменной `:root{--earth-bg}`. При старте `js/bg.js` (`initEarthBackground`, вызывается первой строкой `init()` в main.js) пробует загрузить более качественный вариант из интернета (список URL в `REMOTE_URLS`). При успехе обновляет CSS-переменную `--earth-bg` — `body::after` перерисовывается без перезагрузки. При ошибке/офлайн — остаётся локальный файл. **Грабли:** Wikimedia `upload.…/thumb/` отдаёт только фиксированные bucket-ширины (1280/1920 ок; 2048/2560/3000/4096 → HTTP 400) и режет запросы без contact-User-Agent; оригинал качается через `Special:FilePath`. См. PROMPTS_LOG #14.
 
 ## Структура проекта (фактическая)
 

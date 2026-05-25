@@ -1,3 +1,9 @@
+:root {
+  /* Локальный fallback фона-глобуса. js/bg.js при старте может заменить на
+     более качественный вариант из интернета (см. REMOTE_URLS). */
+  --earth-bg: url('../img/earth.jpg');
+}
+
 body {
   font-family: system-ui, "Segoe UI", Arial, sans-serif;
   margin: 0;
@@ -44,7 +50,7 @@ body::after {
   z-index: -1;
   pointer-events: none;
   border-radius: 50%;
-  background-image: url('../img/earth.jpg');
+  background-image: var(--earth-bg);
   background-size: cover;
   background-position: center 30%;
   /* Атмосферное свечение поверх фото */
