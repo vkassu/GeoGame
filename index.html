@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260538">
+  <link rel="stylesheet" href="css/style.css?v=20260539">
 </head>
 <body>
   <header class="topbar">
@@ -71,7 +71,6 @@
         <div class="topic-list" id="topic-list"></div>
         <div class="setup-bulk">
           <button type="button" class="bulk-btn" id="topics-clear" data-i18n="topics.clear">Очистить всё</button>
-          <button type="button" class="bulk-btn" id="topics-all" data-i18n="topics.all">Выбрать всё</button>
         </div>
       </div>
 
@@ -145,10 +144,29 @@
       <p class="game-xp"><span data-i18n="result.xp-earned">Получено за партию:</span> <span id="game-xp-earned">0</span> <span data-i18n="result.xp-total">XP. Всего:</span> <span id="game-xp-total">0</span> XP</p>
       <p class="game-xp"><span data-i18n="result.xp-record">Рекорд за партию:</span> <span id="result-best-xp">0</span> XP</p>
       <p class="games-played"><span data-i18n="result.games">Партий сыграно:</span> <span id="games-played">0</span></p>
+
+      <!-- XP-бар -->
+      <div class="xp-progress-block" id="xp-progress-block">
+        <div class="xp-bar-row">
+          <span class="xp-level-badge" id="xp-level-from">1</span>
+          <div class="xp-bar-track">
+            <div class="xp-bar-fill" id="xp-bar-fill"></div>
+          </div>
+          <span class="xp-level-badge" id="xp-level-to">2</span>
+        </div>
+        <p class="xp-bar-caption" id="xp-bar-caption"></p>
+      </div>
+
+      <!-- Уведомление о новом уровне (скрыто по умолчанию) -->
+      <div class="level-up-banner" id="level-up-banner" style="display:none">
+        <p class="level-up-title" id="level-up-title"></p>
+        <p class="level-up-detail" id="level-up-detail"></p>
+      </div>
+
       <button id="play-again-btn" class="primary-btn" data-i18n="result.play-again">Играть снова</button>
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260538"></script>
+  <script type="module" src="js/main.js?v=20260539"></script>
 </body>
 </html>

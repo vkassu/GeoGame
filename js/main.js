@@ -47,7 +47,11 @@ import {
   renderAvailableCount,
   setNavButtonEnabled,
   renderInfoScreen,
-} from "./ui.js";
+  renderXPBar,
+  animateXPBar,
+  showLevelUpBanner,
+  hideLevelUpBanner,
+} from "./ui.js?v=20260539";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
@@ -301,12 +305,12 @@ function toggleRegion(key) {
   refreshSetupUI();
 }
 
-// Промежуточная логика до экрана выбора сложности (#17Б): тап по теме включает её
-// на лёгкой сложности (0) или выключает (-1). Полноценный выбор 0..3 — в #17Б.
-function toggleTopic(key) {
-  if (!TOPICS[key]) return;
-  const cur = state.setup.topicDifficulties[key];
-  state.setup.topicDifficulties[key] = cur === -1 ? 0 : -1;
+// Выбрать сложность темы. Клик по уже выбранной сложности — выключает тему (-1).
+function selectTopicDifficulty(topicKey, difficultyIndex) {
+  if (!TOPICS[topicKey]) return;
+  const current = state.setup.topicDifficulties[topicKey];
+  state.setup.topicDifficulties[topicKey] =
+    current === difficultyIndex ? -1 : difficultyIndex;
   persistTopicDifficulties();
   refreshSetupUI();
 }
@@ -316,11 +320,12 @@ function setAllRegions(on) {
   persistRegions();
   refreshSetupUI();
 }
-// Только off: «включить все» без выбора сложности бессмысленно (кнопку уберём в #17Б).
-function setAllTopics(on) {
+// Только off (Очистить всё): выключить все темы. on=true не реализуем —
+// нельзя выбрать все темы без указания сложности.
+function setAllTopicDifficulties(on) {
   if (on) return;
-  for (const k of Object.keys(state.setup.topicDifficulties)) {
-    state.setup.topicDifficulties[k] = -1;
+  for (const key of Object.keys(TOPICS)) {
+    state.setup.topicDifficulties[key] = -1;
   }
   persistTopicDifficulties();
   refreshSetupUI();
@@ -330,14 +335,14 @@ function setAllTopics(on) {
 function refreshSetupUI() {
   const regionItems = Object.keys(REGIONS).map((k) => ({ key: k, label: REGIONS[k].label }));
   const topicItems = Object.keys(TOPICS).map((k) => ({ key: k, label: TOPICS[k].label }));
-  // Тема «активна» для текущего (ещё прежнего) UI-списка, если сложность !== -1.
-  const activeTopics = new Set(
-    Object.keys(state.setup.topicDifficulties).filter(
-      (k) => state.setup.topicDifficulties[k] !== -1
-    )
-  );
+  const userLevel = getLevelFromXP(state.xpTotal);
   renderRegionGrid(regionItems, new Set(state.setup.regions), toggleRegion);
-  renderTopicList(topicItems, activeTopics, toggleTopic);
+  renderTopicList(
+    topicItems,
+    state.setup.topicDifficulties,
+    (topicKey) => getUnlockedDifficulties(topicKey, userLevel),
+    selectTopicDifficulty
+  );
   for (const btn of document.querySelectorAll(".count-btn")) {
     btn.textContent = t("count.q", { n: btn.dataset.count });
   }
@@ -560,6 +565,24 @@ function endGame() {
   renderBestXp(state.bestXpPerGame);
   showScreen(state.screen);
 
+  // XP-бар: XP уже начислялся по ходу партии (в handleAnswer), поэтому state.xpTotal
+  // уже включает заработанное — «было» восстанавливаем вычитанием xpEarnedThisGame.
+  const xpBefore = state.xpTotal - state.xpEarnedThisGame;
+  hideLevelUpBanner();
+  animateXPBar(
+    xpBefore,
+    state.xpTotal,
+    getXPProgress,
+    (newLevel) => {
+      const unlocks = LEVEL_UNLOCKS[newLevel] || [];
+      const labels = unlocks.map(({ topicKey, difficultyIndex }) => {
+        const topicLabel = TOPICS[topicKey]?.label ?? topicKey;
+        return topicLabel + " (" + (difficultyIndex + 1) + ")";
+      });
+      showLevelUpBanner(newLevel, labels);
+    }
+  );
+
   if (state.user) {
     saveUserData(state.user.uid, {
       xpTotal:      state.xpTotal,
@@ -727,8 +750,7 @@ async function init() {
   // #regions-back — заглушка (disabled), идти из Шага 1 пока некуда.
 
   // Шаг 2 — темы
-  document.getElementById("topics-clear").addEventListener("click", () => setAllTopics(false));
-  document.getElementById("topics-all").addEventListener("click", () => setAllTopics(true));
+  document.getElementById("topics-clear").addEventListener("click", () => setAllTopicDifficulties(false));
   document.getElementById("topics-back").addEventListener("click", () => goToStart());
 
   // Шаг 3 — количество

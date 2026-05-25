@@ -122,21 +122,131 @@ export function renderRegionGrid(items, active, onToggle) {
   }
 }
 
-export function renderTopicList(items, active, onToggle) {
+/**
+ * @param {Array<{key, label}>} items
+ * @param {Object} topicDifficulties  — { [topicKey]: difficultyIndex | -1 }
+ * @param {Function} getUnlocked      — (topicKey) => Set<number>  (0..3)
+ * @param {Function} onSelect         — (topicKey, difficultyIndex) => void
+ */
+export function renderTopicList(items, topicDifficulties, getUnlocked, onSelect) {
   const list = document.getElementById("topic-list");
   list.innerHTML = "";
+
   for (const { key, label } of items) {
     const row = document.createElement("div");
-    row.className = "topic-row" + (active.has(key) ? " topic-row-on" : "");
-    const dot = document.createElement("span");
-    dot.className = "setup-dot";
-    const txt = document.createElement("span");
-    txt.className = "setup-label";
-    txt.textContent = label;
-    row.append(dot, txt);
-    row.addEventListener("click", () => onToggle(key));
+    row.className = "topic-row";
+
+    // Название темы
+    const lbl = document.createElement("span");
+    lbl.className = "topic-label";
+    lbl.textContent = label;
+    row.appendChild(lbl);
+
+    // 4 кнопки сложности
+    const btns = document.createElement("div");
+    btns.className = "diff-btns";
+
+    const unlocked = getUnlocked(key);       // Set<number>
+    const selected = topicDifficulties[key]; // -1 или 0..3
+
+    for (let i = 0; i < 4; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = String(i + 1);
+
+      if (!unlocked.has(i)) {
+        btn.className = "diff-btn diff-btn-locked";
+        btn.disabled = true;
+      } else if (selected === i) {
+        btn.className = "diff-btn diff-btn-active";
+      } else {
+        btn.className = "diff-btn diff-btn-unlocked";
+      }
+
+      btn.addEventListener("click", () => onSelect(key, i));
+      btns.appendChild(btn);
+    }
+
+    row.appendChild(btns);
     list.appendChild(row);
   }
+}
+
+// ---- XP-бар и level-up (экран результата) ----
+
+/**
+ * Рендерит XP-бар в статичном виде (без анимации).
+ * xpProgress: { level, xpInLevel, xpNeeded, percent }
+ */
+export function renderXPBar(xpProgress) {
+  const { level, xpInLevel, xpNeeded, percent } = xpProgress;
+  document.getElementById("xp-level-from").textContent = String(level);
+  document.getElementById("xp-level-to").textContent = String(level + 1);
+  document.getElementById("xp-bar-fill").style.width = (percent * 100).toFixed(1) + "%";
+  document.getElementById("xp-bar-caption").textContent =
+    xpInLevel + " / " + xpNeeded + " XP";
+}
+
+/**
+ * Анимирует заполнение XP-бара от startXP до endXP.
+ * getXPProgress принимается параметром, чтобы не создавать зависимость ui.js → levels.js.
+ * @param {number} startXP
+ * @param {number} endXP
+ * @param {Function} getXPProgress  — (xp) => { level, xpInLevel, xpNeeded, percent }
+ * @param {Function} onLevelUp      — (newLevel) => void
+ * @param {number} durationMs       — длительность анимации, default 1200
+ */
+export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationMs = 1200) {
+  const fill = document.getElementById("xp-bar-fill");
+  const caption = document.getElementById("xp-bar-caption");
+  const levelFrom = document.getElementById("xp-level-from");
+  const levelTo = document.getElementById("xp-level-to");
+
+  const startLevel = getXPProgress(startXP).level;
+  let levelUpFired = false;
+  const start = performance.now();
+
+  function tick(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / durationMs, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // ease-out
+    const currentXP = Math.round(startXP + (endXP - startXP) * eased);
+    const prog = getXPProgress(currentXP);
+
+    levelFrom.textContent = String(prog.level);
+    levelTo.textContent = String(prog.level + 1);
+    fill.style.width = (prog.percent * 100).toFixed(1) + "%";
+    caption.textContent = prog.xpInLevel + " / " + prog.xpNeeded + " XP";
+
+    if (!levelUpFired && prog.level > startLevel) {
+      levelUpFired = true;
+      onLevelUp(prog.level);
+    }
+
+    if (t < 1) requestAnimationFrame(tick);
+  }
+
+  renderXPBar(getXPProgress(startXP));
+  requestAnimationFrame(tick);
+}
+
+/**
+ * Показывает баннер «Новый уровень!».
+ * @param {number} newLevel
+ * @param {Array<string>} unlockLabels — названия разблокированного
+ */
+export function showLevelUpBanner(newLevel, unlockLabels) {
+  const banner = document.getElementById("level-up-banner");
+  document.getElementById("level-up-title").textContent =
+    "🎉 " + t("level.up") + " " + newLevel + "!";
+  document.getElementById("level-up-detail").textContent =
+    unlockLabels.length ? t("level.unlocked") + ": " + unlockLabels.join(", ") : "";
+  banner.style.display = "block";
+}
+
+export function hideLevelUpBanner() {
+  const banner = document.getElementById("level-up-banner");
+  if (banner) banner.style.display = "none";
 }
 
 export function renderQuestion({ prompt, options, questionNumber, total, questionText }) {
