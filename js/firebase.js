@@ -1,7 +1,7 @@
 // js/firebase.js
 import { initializeApp }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider,
+import { getAuth, signInWithPopup, GoogleAuthProvider,
          signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc }
@@ -23,19 +23,15 @@ const provider = new GoogleAuthProvider();
 
 // ---- Auth ----
 
-// Redirect (а не popup): popup блокируется/зависает в Safari на iOS/iPadOS
-// и во встроенных WebView (целевое устройство — iPad). Redirect работает везде.
-// После возврата с Google результат подхватывает getRedirectResult ниже,
-// а onAuthStateChanged всё равно отдаёт пользователя.
+// Popup (а не redirect): сайт на vkassu.github.io, а authDomain —
+// geogame-b7f3e.firebaseapp.com (разные домены). signInWithRedirect на такой
+// связке ломается: браузеры режут стороннее хранилище → getRedirectResult
+// возвращает пусто и пользователя выкидывает незалогиненным. Popup открывает
+// auth-handler в отдельном окне и возвращает результат через postMessage —
+// работает на десктопе и в обычном Safari на iPad (попап из жеста-клика).
 export function signInWithGoogle() {
-  return signInWithRedirect(auth, provider);
+  return signInWithPopup(auth, provider);
 }
-
-// Обработать результат редиректа при загрузке страницы (после возврата с Google).
-// Нужно вызвать один раз при старте — иначе ошибки входа потеряются.
-getRedirectResult(auth).catch((e) => {
-  console.warn("Redirect sign-in error:", e);
-});
 
 export function signOutUser() {
   return signOut(auth);

@@ -14,17 +14,17 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 
 Эффективный набор полей: `name, translations, capital, population, flags, cca2, region, languages, currencies, area, coatOfArms`. Это 11 полей, а `/all` ограничивает запрос 10 → `fetchCountries` делает **два запроса** (`API_URL` 7 полей + `API_EXTRAS_URL` 5 полей, оба с `cca2`) и сливает по `cca2`. Языки (`languages`) и валюты (`currencies`) API отдаёт **только на английском** — в темах «Язык»/«Валюта» ответы остаются английскими в обоих языковых режимах.
 
-Фон-глобус: по умолчанию `img/earth.jpg` (сферическое фото Blue Marble, NASA Public Domain, 2048×2048), подключается через CSS `body::after` по переменной `:root{--earth-bg}`. При старте `js/bg.js` (`initEarthBackground`, вызывается первой строкой `init()` в main.js) пробует подгрузить вариант из интернета (`REMOTE_URLS` = Wikimedia thumb 1920px ~750 КБ, запасной 1280px; оригинал 3000×3000 / 5.5 МБ намеренно не используем — дорого для мобильного трафика, почти не отличим от локального 2048px). При успехе обновляет CSS-переменную `--earth-bg` — `body::after` перерисовывается без перезагрузки. При ошибке/офлайн — остаётся локальный файл. **Грабли:** Wikimedia `upload.…/thumb/` отдаёт только фиксированные bucket-ширины (1280/1920 ок; 2048/2560/3000/4096 → HTTP 400) и режет запросы без contact-User-Agent; оригинал качается через `Special:FilePath`. См. PROMPTS_LOG #14.
+Фон-глобус: локальный `img/earth.jpg` (сферическое фото Blue Marble, NASA Public Domain, 1024×1024 ~174 КБ), подключается через CSS `body::after` по переменной `:root{--earth-bg}`. **Удалённой подгрузки больше нет** (был `js/bg.js` с Wikimedia-вариантами — удалён в #18): она грузила лишний внешний файл с перерисовкой и тормозила фон, а локальный 1024px и так качественнее любого живого Wikimedia-thumb. Теперь фон грузится мгновенно из репозитория, без внешних зависимостей. История поиска источников и грабли Wikimedia bucket-ширин — в PROMPTS_LOG #14/#17.
 
 ## Авторизация и облако
 
-- **Авторизация:** Firebase Auth (Google Sign-In) через **`signInWithRedirect`** (не popup — popup блокируется/зависает в Safari на iOS/iPadOS и во встроенных WebView; целевое устройство — iPad). Результат редиректа подхватывает `getRedirectResult(auth)` при загрузке `firebase.js`. CDN ES-модули `firebasejs/10.14.1`, без npm. Вся работа с Firebase изолирована в `js/firebase.js`; `apiKey` в конфиге — **не секрет**, безопасно коммитить (безопасность — правилами Firestore + Authorized Domains в Console). Проект `geogame-b7f3e`.
+- **Авторизация:** Firebase Auth (Google Sign-In) через **`signInWithPopup`**. ⚠️ **НЕ использовать `signInWithRedirect`**: сайт на `vkassu.github.io`, а `authDomain` — `geogame-b7f3e.firebaseapp.com` (разные домены); браузеры режут стороннее хранилище → `getRedirectResult` приходит пустым и пользователя выкидывает незалогиненным (проверено: redirect ломает вход, #18 откатил на popup). Popup открывает auth-handler в отдельном окне и возвращает результат через postMessage — работает на десктопе и в обычном Safari на iPad (попап из жеста-клика). CDN ES-модули `firebasejs/10.14.1`, без npm. Вся работа с Firebase изолирована в `js/firebase.js`; `apiKey` в конфиге — **не секрет**, безопасно коммитить (безопасность — правилами Firestore + Authorized Domains в Console). Проект `geogame-b7f3e`. **Кеш-инвалидация:** `firebase.js` импортируется в main.js с `?v=...` (модули иначе не покрыты cache-busting) — при правке firebase.js поднимать версию в импорте.
 - **Данные в облаке:** Firestore, коллекция `users/{uid}`, поля `xpTotal / bestXpPerGame / gamesPlayed / lang`.
 - **Гостевой режим:** без входа всё работает как раньше — только localStorage. `state.user = null`.
 - **Миграция:** первый вход (документ ещё не существует) переносит локальные `xpTotal/bestXpPerGame/gamesPlayed/lang` в Firestore (`loadUserData`). Последующие входы берут облачные данные и пишут их в localStorage (`applyUserData`). Возврат гостевого прогресса в облако — только при самом первом входе.
 - **Сохранение:** `endGame()` пишет xp/best/games, `switchLang()` пишет `lang` (оба — только если `state.user`).
 - **Firestore rules (ручной шаг в Console, не в репо):** пользователь читает/пишет только свой документ — `match /users/{userId} { allow read, write: if request.auth.uid == userId; }`. Плюс в Console: включить Google в Sign-in method и добавить `vkassu.github.io` + `localhost` в Authorized Domains.
-- **Не проверяемо в preview:** реальный OAuth-вход (redirect уводит на Google), Firestore I/O, миграция — только на деплое (и redirect особенно — на iPad). См. PROMPTS_LOG #15, #17.
+- **Не проверяемо в preview:** реальный OAuth-вход (popup на gstatic/Google), Firestore I/O, миграция — только на деплое. См. PROMPTS_LOG #15, #18.
 
 ## Структура проекта (фактическая)
 
@@ -34,8 +34,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - `js/main.js` — точка входа: игровой `state`, конфиг тем `TOPICS` и регионов `REGIONS`, поток настройки (Регионы/Темы/Количество), логика вопросов, единственное место работы с `localStorage`.
 - `js/ui.js` — слой представления: переключение экранов и заполнение DOM. Без игровой логики и без state.
 - `js/i18n.js` — интернационализация: текущий язык (`getLang`/`setLang`), словарь UI-строк и `t(key, vars)`, `applyI18n()` (по `data-i18n`), словари `TOPIC_LABELS` / `TOPIC_QUESTIONS` / `REGION_LABELS`.
-- `js/bg.js` — фоновая загрузка снимка Земли: `initEarthBackground()` пробует `REMOTE_URLS`, при успехе подменяет CSS-переменную `--earth-bg`.
-- `js/firebase.js` — авторизация и облако: Firebase Auth (Google) + Firestore через CDN ES-модули (без npm). Экспорт `signInWithGoogle`/`signOutUser`/`onUserChanged`/`loadUserData`/`saveUserData`.
+- `js/firebase.js` — авторизация и облако: Firebase Auth (Google, popup) + Firestore через CDN ES-модули (без npm). Экспорт `signInWithGoogle`/`signOutUser`/`onUserChanged`/`loadUserData`/`saveUserData`.
 - `data/capitals_ru.json` — словарь русских названий столиц (`cca2` → название).
 - `img/earth.jpg` — спутниковый снимок NASA (Public Domain), фон-глобус в `body::after`.
 
@@ -136,7 +135,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - XP-накопление: +10 XP за правильный ответ, общий счётчик `geogame:xpTotal` в localStorage, отображение на главном экране («Опыт: N») и на экране результата партии («Получено за партию / Всего»). Подсказка на начисление не влияет.
 - 9 тем (3 по умолчанию + 6 опциональных: Население, Площадь, Язык, Валюта, Самоназвание, Герб). Разделены на Тип А (назови страну) и Тип Б (назови параметр — показывается название страны). Доп. поля грузятся вторым запросом к API.
 - Язык интерфейса RU/EN: кнопка в шапке, сохранение в `geogame:lang`, билингвальны все UI-строки, вопросы, метки тем/регионов, варианты-ответы. **Ограничение:** языки/валюты из API только на английском.
-- Фон-глобус: реальное сферическое фото Земли (Blue Marble, локальный `img/earth.jpg` 2048×2048) + фоновая подгрузка качественного оригинала из интернета через `js/bg.js` (см. «Данные»).
+- Фон-глобус: реальное сферическое фото Земли (Blue Marble, локальный `img/earth.jpg` 1024×1024 ~174 КБ, грузится мгновенно без внешних зависимостей — см. «Данные»).
 - **Авторизация Google + облако (Firebase):** вход через Google-аккаунт, синхронизация `xpTotal/bestXpPerGame/gamesPlayed/lang` в Firestore `users/{uid}`, гостевой режим (localStorage) без входа, миграция гостевых данных при первом входе. Ручные шаги в Console выполнены (Firestore rules, Google-провайдер, Authorized Domains); живой вход на деплое проверен Алексеем 2026-05-25. См. «Авторизация и облако» + PROMPTS_LOG #15.
 - **Энциклопедия (экран «Информация»):** открывается кнопкой «Информация» на экране результата ответа, показывает флаг, официальное название, регион, столицу, население, площадь, язык, валюту, герб; кнопка «← Назад» возвращает к результату ответа без потери хода. RU/EN. См. PROMPTS_LOG #16.
 

@@ -48,9 +48,8 @@ import {
   setNavButtonEnabled,
   renderInfoScreen,
 } from "./ui.js";
-import { initEarthBackground } from "./bg.js";
 import { onUserChanged, signInWithGoogle, signOutUser,
-         loadUserData, saveUserData } from "./firebase.js";
+         loadUserData, saveUserData } from "./firebase.js?v=20260537";
 
 const OPTIONS_PER_QUESTION = 4;
 const QUESTION_TIME_SEC = 30;
@@ -596,7 +595,6 @@ function renderStatus() {
 async function init() {
   const statusEl = document.getElementById("status");
 
-  initEarthBackground(); // запускаем фоновую загрузку — не блокирует игру
   loadFromStorage();
   applyI18n();
   updateLangButton();
