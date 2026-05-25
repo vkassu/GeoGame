@@ -59,6 +59,7 @@ export async function loadUserData(uid, localFallback) {
     xpTotal: localFallback.xpTotal || 0,
     bestXpPerGame: localFallback.bestXpPerGame || 0,
     gamesPlayed: localFallback.gamesPlayed || 0,
+    inventory: localFallback.inventory || { hints: 0, extraLives: 0, chests: 0 },
     lang: localFallback.lang || "ru",
   };
   await setDoc(ref, data);

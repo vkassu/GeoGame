@@ -18,6 +18,31 @@
 
 ---
 
+## 2026-05-25 #17A | Data-layer: уровни, сложности, система разблокировок
+
+**Цель:** добавить модель уровней/сложностей/разблокировок и инвентарь на уровне данных (новый `js/levels.js`, изменения в TOPICS/state/storage/firebase/i18n). UI не трогаем — это #17Б.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500) — acceptance-тесты `levels.js` + сквозной прогон новой модели тем (вкл/выкл, сложность 0→4 варианта, сложность 3→10 вариантов).
+
+**Автор промпта:** Cowork
+
+**Промпт:** [сжато — полный текст в истории Cowork. 10 шагов: новый levels.js (XP_THRESHOLDS×50, LEVEL_UNLOCKS, getLevelFromXP/getXPForLevel/getXPProgress/getUnlockedDifficulties); TOPICS получают `difficulties` [4/6/8/10]; удалить OPTIONS_PER_QUESTION; topics→topicDifficulties (-1..3); state.inventory; новые STORAGE-ключи; loadFromStorage/persist; questionPairs с difficultyIndex; buildOptions(choicesCount); setAllTopics только off; firebase inventory; i18n level.*/inv.*; импорт levels в main.js; acceptance-тесты.]
+
+**Результат / расхождения:**
+- **Создан `js/levels.js`.** XP-модель: `XP_THRESHOLDS` — накопительные пороги, растёт по *1.4 **стоимость перехода** между уровнями (а не сам порог). Это единственная трактовка, проходящая acceptance-пример `getXPProgress(300) → {level:2, xpInLevel:100}` (если бы *1.4 рос сам порог, 280 уже давал бы уровень 3). Пороги: `[0,200,480,870,1420,2190,...]`, 50 шт. Документировал расхождение прозы ТЗ («порог *1.4») с её же примером — пример главнее.
+- **LEVEL_UNLOCKS — заглушка-ограничение (флагнул):** 9 тем × 4 сложности = **36** уникальных разблокировок, а уровней 50. Требование «каждый из 50 уровней что-то открывает» физически недостижимо. Решение: прогрессия «вширь» — уровни 1–9 открывают сложность 0 всех тем (L1 = `{capital,0}` как требует ТЗ), 10–18 сложность 1, и т.д. до уровня 36; уровни 37–50 нового контента не открывают (всё открыто). Это явно отмечено в коде и доках; баланс/награды поздних уровней — отдельная задача.
+- **Acceptance-тесты (в браузере, dynamic import):** `getLevelFromXP(0/199/200)`=1/1/2 ✓; `getXPProgress(300)`=`{level:2,xpInLevel:100,xpNeeded:280,percent:0.357}` ✓; `getUnlockedDifficulties("capital",1)`={0} ✓, `("capital",10)`={0,1} ✓, `("country",1)`={} ✓; `LEVEL_UNLOCKS[1]`=`[{capital,0}]` ✓; 50 порогов, 36 уровней разблокировок.
+- **main.js:** удалён `OPTIONS_PER_QUESTION`; добавлен `DIFFICULTIES` [4/6/8/10] и присвоен всем темам циклом `Object.values(TOPICS).forEach(t=>t.difficulties=DIFFICULTIES)` (DRY вместо 9 идентичных литералов и обхода дубля `valid: hasCapital` у capital/countryByCapital — функционально идентично). `topics`→`topicDifficulties` (объект -1..3, дефолт всё -1), `state.inventory`, новые STORAGE-ключи, `loadFromStorage` (inventory + topicDifficulties с валидацией, старый `setupTopics` больше не читается), `persistTopics`→`persistTopicDifficulties`, `questionPairs` (тройки с `difficultyIndex`), `buildOptions(country, topic, choicesCount)`, `showQuestion` берёт choicesCount из `difficulties[difficultyIndex]`. `toggleTopic` временно off↔0, `setAllTopics` только off (on=true → no-op; кнопку уберут в #17Б), `refreshSetupUI` берёт активные темы из topicDifficulties — **существующий UI-список тем продолжает работать без правок ui.js**.
+- **firebase.js:** в `loadUserData` миграционный дефолт получил `inventory` (firebase.js не видит state — inventory прокидывается через main.js: `applyUserData` применяет, `endGame`/`onUserChanged` передают `state.inventory`).
+- **i18n.js:** 8 ключей `level.*`/`inv.*` (ru+en) в существующем формате (по языкам, не объединённым объектом из ТЗ).
+- **Совместимость:** `import {...} from "./levels.js"` в main.js (без `?v=` — новый файл); `getLevelFromXP/getXPProgress/getUnlockedDifficulties/LEVEL_UNLOCKS` импортированы, но в #17A ещё не используются в main.js — это scaffolding под #17Б (не «мёртвый код», а явно запрошенный задел).
+- **Тронуты:** `js/levels.js` (новый), `js/main.js`, `js/firebase.js`, `js/i18n.js`, `index.html` (cache-bust `20260537 → 20260538`; firebase-импорт тоже `?v=20260538`), `CLAUDE.md`, `PROMPTS_LOG.md`.
+- **Проверено в браузере:** дефолт все темы off → «Доступно 0», «Начало» disabled; тап по теме включает (245), старт партии, сложность 0 → 4 варианта; сложность 3 (через localStorage) → 10 вариантов; ответы работают; консоль чистая. **Важно для #17Б:** дефолт «всё выключено» меняет UX — без UI выбора сложности игрок включает тему тапом (difficulty 0).
+
+---
+
 ## 2026-05-25 #18 | Откат: redirect→popup (вход сломался) + удаление удалённого фона
 
 **Цель:** починить два регресса из #17 — (1) вход через `signInWithRedirect` не завершается (редирект уводит и возвращает незалогиненным), (2) фон по-прежнему грузится медленно.

@@ -49,11 +49,20 @@ import {
   renderInfoScreen,
 } from "./ui.js";
 import { onUserChanged, signInWithGoogle, signOutUser,
-         loadUserData, saveUserData } from "./firebase.js?v=20260537";
+         loadUserData, saveUserData } from "./firebase.js?v=20260538";
+import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
+  from "./levels.js";
 
-const OPTIONS_PER_QUESTION = 4;
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
+
+// Шкала сложностей темы: index 0..3 → число вариантов ответа. Едина для всех тем.
+const DIFFICULTIES = [
+  { choicesCount: 4 },   // 0
+  { choicesCount: 6 },   // 1
+  { choicesCount: 8 },   // 2
+  { choicesCount: 10 },  // 3
+];
 
 // Темы вопросов.
 //   prompt  — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
@@ -126,6 +135,9 @@ const TOPICS = {
   },
 };
 
+// Все темы используют одну шкалу сложностей (TOPICS[key].difficulties[idx].choicesCount).
+Object.values(TOPICS).forEach((topic) => { topic.difficulties = DIFFICULTIES; });
+
 // Регионы: ключ → { label (геттер, lang-aware), apiValue }. apiValue сверяется с country.region.
 const REGIONS = {
   europe:   { get label() { return REGION_LABELS.europe[getLang()]; },   apiValue: "Europe"   },
@@ -138,16 +150,23 @@ const REGIONS = {
 const QUESTION_COUNTS = [10, 25, 50, 75, 100];
 
 const DEFAULT_REGIONS = ["europe", "asia", "africa", "americas", "oceania"];
-const DEFAULT_TOPICS = ["country", "capital", "countryByCapital"];
+// Стартовое состояние тем: всё выключено (-1). Игрок сам включает тему,
+// выбирая её сложность. -1 = выключено, 0..3 = индекс сложности.
+const DEFAULT_TOPIC_DIFFICULTIES = Object.fromEntries(
+  Object.keys(TOPICS).map((k) => [k, -1])
+);
 const DEFAULT_QUESTION_COUNT = 10;
+const DEFAULT_INVENTORY = { hints: 0, extraLives: 0, chests: 0 };
 
 const STORAGE = {
   gamesPlayed: "geogame:gamesPlayed",
   xpTotal: "geogame:xpTotal",
   setupRegions: "geogame:setup:regions",
-  setupTopics: "geogame:setup:topics",
+  setupTopics: "geogame:setup:topics", // устаревший (массив тем) — больше не читаем/пишем, оставлен для справки
+  setupTopicDifficulties: "geogame:setup:topicDifficulties",
   setupQuestionCount: "geogame:setup:questionCount",
   bestXpPerGame: "geogame:bestXpPerGame",
+  inventory: "geogame:inventory",
   lang: "geogame:lang",
 };
 
@@ -168,10 +187,11 @@ const state = {
   xpTotal: 0,
   xpEarnedThisGame: 0,
   bestXpPerGame: 0,
+  inventory: { ...DEFAULT_INVENTORY }, // { hints, extraLives, chests }
   dataLoaded: false,
   setup: {
     regions: [...DEFAULT_REGIONS],
-    topics: [...DEFAULT_TOPICS],
+    topicDifficulties: { ...DEFAULT_TOPIC_DIFFICULTIES }, // { topicKey: -1..3 }, -1 = выключено
     questionCount: DEFAULT_QUESTION_COUNT,
   },
 };
@@ -186,6 +206,18 @@ function loadFromStorage() {
   state.xpTotal = Number(localStorage.getItem(STORAGE.xpTotal)) || 0;
   state.bestXpPerGame = Number(localStorage.getItem(STORAGE.bestXpPerGame)) || 0;
 
+  // Инвентарь
+  try {
+    const inv = JSON.parse(localStorage.getItem(STORAGE.inventory) || "null");
+    if (inv && typeof inv === "object") {
+      state.inventory = {
+        hints: Number(inv.hints) || 0,
+        extraLives: Number(inv.extraLives) || 0,
+        chests: Number(inv.chests) || 0,
+      };
+    }
+  } catch (_) {}
+
   try {
     const r = JSON.parse(localStorage.getItem(STORAGE.setupRegions) || "null");
     if (Array.isArray(r)) {
@@ -193,13 +225,19 @@ function loadFromStorage() {
       if (valid.length) state.setup.regions = valid;
     }
   } catch (_) {}
+
+  // Сложности тем: объект { topicKey: -1..3 }. Невалидные ключи/значения отбрасываем.
   try {
-    const t = JSON.parse(localStorage.getItem(STORAGE.setupTopics) || "null");
-    if (Array.isArray(t)) {
-      const valid = t.filter((k) => TOPICS[k]);
-      if (valid.length) state.setup.topics = valid;
+    const td = JSON.parse(localStorage.getItem(STORAGE.setupTopicDifficulties) || "null");
+    if (td && typeof td === "object" && !Array.isArray(td)) {
+      const clean = { ...DEFAULT_TOPIC_DIFFICULTIES };
+      for (const [k, v] of Object.entries(td)) {
+        if (TOPICS[k] && Number.isInteger(v) && v >= -1 && v <= 3) clean[k] = v;
+      }
+      state.setup.topicDifficulties = clean;
     }
   } catch (_) {}
+
   const qc = Number(localStorage.getItem(STORAGE.setupQuestionCount));
   if (QUESTION_COUNTS.includes(qc)) state.setup.questionCount = qc;
 }
@@ -225,15 +263,17 @@ function regionPoolCountries() {
   return state.allCountries.filter((c) => allowed.has(c.region));
 }
 
-// Все валидные пары (страна, тема) под выбранные регионы и темы — это и есть «реальные вопросы».
-// Одна страна даёт столько вопросов, сколько выбранных тем для неё валидны.
+// Все валидные тройки (страна, тема, сложность) под выбранные регионы и включённые темы.
+// Тема включена, если её difficultyIndex !== -1. Одна страна даёт столько вопросов,
+// сколько включённых тем для неё валидны.
 function questionPairs() {
-  const topics = state.setup.topics;
+  const td = state.setup.topicDifficulties;
+  const enabled = Object.entries(td).filter(([, di]) => di !== -1);
   const pairs = [];
   for (const country of regionPoolCountries()) {
-    for (const tk of topics) {
+    for (const [tk, difficultyIndex] of enabled) {
       if (TOPICS[tk] && TOPICS[tk].valid(country)) {
-        pairs.push({ country, topicKey: tk });
+        pairs.push({ country, topicKey: tk, difficultyIndex });
       }
     }
   }
@@ -245,8 +285,11 @@ function questionPairs() {
 function persistRegions() {
   localStorage.setItem(STORAGE.setupRegions, JSON.stringify(state.setup.regions));
 }
-function persistTopics() {
-  localStorage.setItem(STORAGE.setupTopics, JSON.stringify(state.setup.topics));
+function persistTopicDifficulties() {
+  localStorage.setItem(
+    STORAGE.setupTopicDifficulties,
+    JSON.stringify(state.setup.topicDifficulties)
+  );
 }
 
 function toggleRegion(key) {
@@ -258,12 +301,13 @@ function toggleRegion(key) {
   refreshSetupUI();
 }
 
+// Промежуточная логика до экрана выбора сложности (#17Б): тап по теме включает её
+// на лёгкой сложности (0) или выключает (-1). Полноценный выбор 0..3 — в #17Б.
 function toggleTopic(key) {
   if (!TOPICS[key]) return;
-  const i = state.setup.topics.indexOf(key);
-  if (i >= 0) state.setup.topics.splice(i, 1);
-  else state.setup.topics.push(key);
-  persistTopics();
+  const cur = state.setup.topicDifficulties[key];
+  state.setup.topicDifficulties[key] = cur === -1 ? 0 : -1;
+  persistTopicDifficulties();
   refreshSetupUI();
 }
 
@@ -272,9 +316,13 @@ function setAllRegions(on) {
   persistRegions();
   refreshSetupUI();
 }
+// Только off: «включить все» без выбора сложности бессмысленно (кнопку уберём в #17Б).
 function setAllTopics(on) {
-  state.setup.topics = on ? Object.keys(TOPICS) : [];
-  persistTopics();
+  if (on) return;
+  for (const k of Object.keys(state.setup.topicDifficulties)) {
+    state.setup.topicDifficulties[k] = -1;
+  }
+  persistTopicDifficulties();
   refreshSetupUI();
 }
 
@@ -282,8 +330,14 @@ function setAllTopics(on) {
 function refreshSetupUI() {
   const regionItems = Object.keys(REGIONS).map((k) => ({ key: k, label: REGIONS[k].label }));
   const topicItems = Object.keys(TOPICS).map((k) => ({ key: k, label: TOPICS[k].label }));
+  // Тема «активна» для текущего (ещё прежнего) UI-списка, если сложность !== -1.
+  const activeTopics = new Set(
+    Object.keys(state.setup.topicDifficulties).filter(
+      (k) => state.setup.topicDifficulties[k] !== -1
+    )
+  );
   renderRegionGrid(regionItems, new Set(state.setup.regions), toggleRegion);
-  renderTopicList(topicItems, new Set(state.setup.topics), toggleTopic);
+  renderTopicList(topicItems, activeTopics, toggleTopic);
   for (const btn of document.querySelectorAll(".count-btn")) {
     btn.textContent = t("count.q", { n: btn.dataset.count });
   }
@@ -302,7 +356,7 @@ function selectQuestionCountAndStart(n) {
 
 // ---------- игра ----------
 
-function buildOptions(correctCountry, topic) {
+function buildOptions(correctCountry, topic, choicesCount) {
   const answer = topic.answer;
   const correct = answer(correctCountry);
   const seen = new Set([correct]);
@@ -314,14 +368,14 @@ function buildOptions(correctCountry, topic) {
   ];
   for (const src of sources) {
     for (const c of shuffle(src)) {
-      if (wrong.length >= OPTIONS_PER_QUESTION - 1) break;
+      if (wrong.length >= choicesCount - 1) break;
       const v = answer(c);
       if (!seen.has(v)) {
         seen.add(v);
         wrong.push(v);
       }
     }
-    if (wrong.length >= OPTIONS_PER_QUESTION - 1) break;
+    if (wrong.length >= choicesCount - 1) break;
   }
   return shuffle([correct, ...wrong]);
 }
@@ -388,7 +442,8 @@ function showQuestion(index) {
   const topic = TOPICS[q.topicKey];
   const country = q.country;
   const correct = topic.answer(country);
-  const options = buildOptions(country, topic);
+  const choicesCount = topic.difficulties[q.difficultyIndex].choicesCount;
+  const options = buildOptions(country, topic, choicesCount);
 
   const buttons = renderQuestion({
     prompt: topic.prompt(country),
@@ -510,6 +565,7 @@ function endGame() {
       xpTotal:      state.xpTotal,
       bestXpPerGame: state.bestXpPerGame,
       gamesPlayed:  state.gamesPlayed,
+      inventory:    state.inventory,
     }).catch(console.error);
   }
 }
@@ -550,11 +606,19 @@ function applyUserData(data) {
   state.xpTotal       = data.xpTotal       ?? state.xpTotal;
   state.bestXpPerGame = data.bestXpPerGame  ?? state.bestXpPerGame;
   state.gamesPlayed   = data.gamesPlayed    ?? state.gamesPlayed;
+  if (data.inventory && typeof data.inventory === "object") {
+    state.inventory = {
+      hints: Number(data.inventory.hints) || 0,
+      extraLives: Number(data.inventory.extraLives) || 0,
+      chests: Number(data.inventory.chests) || 0,
+    };
+  }
   // Обновить localStorage чтобы совпадал с облаком
   localStorage.setItem(STORAGE.xpTotal,      String(state.xpTotal));
   localStorage.setItem(STORAGE.bestXpPerGame, String(state.bestXpPerGame));
   localStorage.setItem(STORAGE.gamesPlayed,   String(state.gamesPlayed));
-  // Обновить UI
+  localStorage.setItem(STORAGE.inventory,     JSON.stringify(state.inventory));
+  // Обновить UI (инвентарь — пока без UI, появится в #17Б)
   renderXpTotal(state.xpTotal);
   renderBestXp(state.bestXpPerGame);
   renderGamesPlayed(state.gamesPlayed);
@@ -623,6 +687,7 @@ async function init() {
           xpTotal:      state.xpTotal,
           bestXpPerGame: state.bestXpPerGame,
           gamesPlayed:  state.gamesPlayed,
+          inventory:    state.inventory,
           lang:         getLang(),
         });
         applyUserData(data);

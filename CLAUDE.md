@@ -35,6 +35,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - `js/ui.js` — слой представления: переключение экранов и заполнение DOM. Без игровой логики и без state.
 - `js/i18n.js` — интернационализация: текущий язык (`getLang`/`setLang`), словарь UI-строк и `t(key, vars)`, `applyI18n()` (по `data-i18n`), словари `TOPIC_LABELS` / `TOPIC_QUESTIONS` / `REGION_LABELS`.
 - `js/firebase.js` — авторизация и облако: Firebase Auth (Google, popup) + Firestore через CDN ES-модули (без npm). Экспорт `signInWithGoogle`/`signOutUser`/`onUserChanged`/`loadUserData`/`saveUserData`.
+- `js/levels.js` — система уровней/сложностей/разблокировок (data-layer, без UI и state): `XP_THRESHOLDS` (50, накопит. пороги), `LEVEL_UNLOCKS` (уровень → разблокировки тем×сложностей), `getLevelFromXP`/`getXPForLevel`/`getXPProgress`/`getUnlockedDifficulties`.
 - `data/capitals_ru.json` — словарь русских названий столиц (`cca2` → название).
 - `img/earth.jpg` — спутниковый снимок NASA (Public Domain), фон-глобус в `body::after`.
 
@@ -66,7 +67,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 8. **Самоназвание** (`nativeName`) — текст-промпт с самоназванием (`nativeNameStr`, не-английское `name.nativeName`) → выбрать страну. `valid`: `hasNativeName`.
 9. **Герб** (`coatOfArms`) — изображение герба (`prompt.type === "coa"`) → выбрать страну. `valid`: `hasCoatOfArms`.
 
-Темы 4–9 **не включены по умолчанию** (`DEFAULT_TOPICS` = только первые три) — игрок выбирает их вручную на Шаге 2.
+**Сложности и включение тем (data-layer, #17A):** каждая тема имеет `difficulties` — массив `[{choicesCount:4},{6},{8},{10}]` (index 0..3, едины для всех тем через присваивание после `TOPICS`). Состояние тем теперь — `state.setup.topicDifficulties` = объект `{ topicKey: -1..3 }`, где `-1` = тема выключена, `0..3` = выбранная сложность. **По умолчанию все темы выключены** (`DEFAULT_TOPIC_DIFFICULTIES` = все `-1`) — игрок включает тему, выбирая сложность. До экрана выбора сложности (#17Б) `toggleTopic` временно переключает тему между `-1` и `0`. Система уровней/разблокировок — в `js/levels.js` (XP-пороги, `LEVEL_UNLOCKS`, `getLevelFromXP`/`getXPProgress`/`getUnlockedDifficulties`); enforcement разблокировок в UI — задача #17Б.
 
 **Два типа тем (архитектура):**
 - **Тип А — «назови страну»** (`answer` = `getName`): `country` (`prompt` флаг), `countryByCapital` (`prompt` текст столицы `getCapital`), `nativeName` (`prompt` текст самоназвания `nativeNameStr`), `coatOfArms` (`prompt` герб).
@@ -84,7 +85,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 
 Сложность как концепция удалена. «Режим» удалён — вместо него набор тем.
 
-Настройки сохраняются между сессиями (`geogame:setup:*`). Дефолты при пустом localStorage: все 5 регионов, все 3 темы, 10 вопросов.
+Настройки сохраняются между сессиями (`geogame:setup:*`). Дефолты при пустом localStorage: все 5 регионов, **все темы выключены** (игрок включает вручную), 10 вопросов.
 
 **Рекорд** = максимальный XP за одну партию (один общий, ключ `geogame:bestXpPerGame`). Старая схема «рекорд по режиму» удалена.
 
@@ -107,12 +108,12 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 ## Соглашения в коде
 
 - `state` и `localStorage` — только в `main.js`. UI-слой не знает про state.
-- Ключи localStorage (актуальные): `geogame:setup:regions`, `geogame:setup:topics`, `geogame:setup:questionCount` (массивы/число настройки), `geogame:bestXpPerGame` (рекорд по XP за партию), `geogame:xpTotal` (общий XP), `geogame:gamesPlayed`, `geogame:lang` (RU/EN).
+- Ключи localStorage (актуальные): `geogame:setup:regions` (массив), `geogame:setup:topicDifficulties` (объект `{topicKey:-1..3}`), `geogame:setup:questionCount` (число), `geogame:bestXpPerGame` (рекорд по XP за партию), `geogame:xpTotal` (общий XP), `geogame:gamesPlayed`, `geogame:inventory` (объект `{hints,extraLives,chests}`), `geogame:lang` (RU/EN). Устаревший `geogame:setup:topics` (массив тем) больше **не читается и не пишется** (заменён на `topicDifficulties`).
 - Устаревшие ключи (больше не пишутся, старые значения игнорируются, не чистим): `geogame:bestScore:<mode>`, `geogame:difficulty`, `geogame:mode`.
 - Новая тема добавляется как запись в объект `TOPICS` (`label`, `question`, `prompt`, `answer`, `valid`) — остальная механика обобщена и переиспользуется.
 - `prompt(country)` возвращает дескриптор того, что показывать в вопросе: `{ type: "flag", country }`, `{ type: "text", text }` или `{ type: "coa", country }` (герб). `renderQuestion` в `ui.js` рисует флаг / текстовый блок / изображение герба (`.coa-img`) по этому типу; флаг и герб имеют фолбэк `svg → png → эмодзи`.
 - Имя функции `nativeNameStr` (самоназвание) не конфликтует с ключом темы `TOPICS.nativeName` — это разные неймспейсы (функция в data.js / ключ объекта).
-- `state.questions` — массив `{ country, topicKey }` (тема фиксируется на этапе сборки партии в `startGame`). Вопрос = уникальная пара (страна, тема) из `questionPairs()`; одна страна может встретиться под разными темами в одной партии.
+- `state.questions` — массив `{ country, topicKey, difficultyIndex }` (тема и сложность фиксируются при сборке партии в `startGame`). Вопрос = валидная тройка (страна, тема, сложность) из `questionPairs()`; число вариантов ответа берётся из `TOPICS[topicKey].difficulties[difficultyIndex].choicesCount` (4/6/8/10). Одна страна может встретиться под разными темами в одной партии.
 - **i18n:** `TOPICS` и `REGIONS` используют геттеры `get label()` / `get question()` — читают текущий язык из `i18n.js` в момент вызова (не кешируют). Ответы тем — lang-aware обёртки из `data.js` (`getName`/`getCapital`/`getPopulationFormatted`/`getAreaFormatted`); `languageName`/`currencyName` всегда EN. Статичные строки в DOM — через `data-i18n` + `applyI18n()`; динамические (`#status`, счётчик вопросов, баннер ответа) — через `t(key, vars)` при рендере. Новый ключ localStorage: `geogame:lang`.
 
 ---
@@ -140,7 +141,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - **Энциклопедия (экран «Информация»):** открывается кнопкой «Информация» на экране результата ответа, показывает флаг, официальное название, регион, столицу, население, площадь, язык, валюту, герб; кнопка «← Назад» возвращает к результату ответа без потери хода. RU/EN. См. PROMPTS_LOG #16.
 
 **В работе:**
-- Нет активных задач.
+- **Система уровней/сложностей — data-layer готов (#17A), UI ждёт (#17Б):** `js/levels.js` (XP-пороги, разблокировки), `TOPICS[*].difficulties`, `state.setup.topicDifficulties` (-1..3), `state.inventory`, синхронизация inventory в Firestore. **Пока нет UI:** экрана выбора сложности тем, XP-бара/уровня, enforcement разблокировок, инвентаря, кнопки «Выбрать все темы» (её уберут). Сейчас тема включается тапом на лёгкой сложности (0) через временный `toggleTopic`. Заглушка-ограничение: 9 тем × 4 сложности = 36 разблокировок на 50 уровней → уровни 37–50 нового контента не открывают (баланс позже).
 
 **Дальше (по приоритету):**
 1. Проверка UI на реальных устройствах (iPad/iPhone, Safari).
