@@ -171,31 +171,7 @@
 
 **Автор промпта:** Cowork
 
-**Промпт (полный текст, передан в терминал 2026-05-24):**
-
-> Реализуй новый поток настройки игры: три экрана (Регионы / Темы / Количество) вместо текущего одного стартового экрана. Перед началом открыть раздел «Следующая большая правка» в CLAUDE.md.
->
-> **Цель.** Сейчас старт — один экран с радиокнопками режима (3) и сложности (3). В референсе настройка разбита на три шага: регионы, темы, количество. «Сложность» исчезает, «один режим» исчезает — вместо неё несколько выбираемых тем и регионов одновременно.
->
-> **Удаляем из кода:** в main.js — `QUESTIONS_BY_DIFFICULTY`, `loadBestScore`, `bestScoreFor`, `state.difficulty/mode/bestScore`, `selectDifficulty`, `selectMode`, очистку difficulty/mode/bestScore в loadFromStorage, в init — вызовы setSelectedDifficulty/setSelectedMode/setModeText/renderBestScore и циклы по getDifficultyInputs/getModeInputs, соответствующие импорты. В ui.js — getDifficultyInputs/setSelectedDifficulty/getModeInputs/setSelectedMode/setModeText/renderBestScore. В index.html — весь старый блок #start-screen (start-title, start-subtitle, record, mode-title, mode, difficulty-title, difficulty, start-btn), оставить контейнер + перенести xp-total. В css — .mode/.mode-option/.difficulty/.diff-option/.group-title/#start-title/.subtitle/.record.
->
-> **Новая модель:** `TOPICS` (country/capital/countryByCapital — label/question/prompt/answer/valid), `REGIONS` (europe/asia/africa/americas/oceania → apiValue Europe/Asia/Africa/Americas/Oceania), `QUESTION_COUNTS=[10,25,50,75,100]`, дефолты (все регионы, все темы, 10). STORAGE: setupRegions/setupTopics/setupQuestionCount + bestXpPerGame. state.setup={regions,topics,questionCount}, bestXpPerGame. loadFromStorage — парсинг JSON-массивов с фильтрацией по валидным ключам, минимум остаётся дефолт.
->
-> **HTML:** три новых section — #start-screen (Регионы: .setup-panel с #region-grid, bulk-кнопки regions-clear/regions-all; .setup-info с available-count, xp-total, best-xp, кнопкой open-topics-btn; .setup-nav с regions-back disabled и regions-next «Начало»), #topics-screen (#topic-list, topics-clear/topics-all, topics-back), #count-screen (5 .count-btn с data-count, count-back). Игровой и результат не трогать (кроме опц. строки рекорда).
->
-> **CSS:** панель = стиль .screen; bulk/назад — серо-белые; «Темы»/«Начало»/количество — синий глянец (как .option-btn). Сетка регионов 2 колонки с индикатором (зелёный/серый) + названием, тап по ячейке. Список тем — вертикальный. Кнопки количества — полноширинные ~60px.
->
-> **Логика:** renderRegions/renderTopics (toggle ключа, сохранить, перерисовать, обновить «Начало» и счётчик). «Начало» активна только при regions>0 И topics>0. Очистить/Выбрать всё. «Темы»→showScreen(topics), «Начало»→showScreen(count). selectQuestionCountAndStart(n): валидация ∈ QUESTION_COUNTS, сохранить, startGame. startGame: allowedRegions из apiValue, pool = allCountries.filter(region∈allowed); для каждого вопроса тема случайно из state.setup.topics, страна из пула + TOPICS[topic].valid; если по теме нет стран — пропустить; если пул пуст — ошибка; state.questions=[{country,topicKey}]; если пул меньше questionCount — alert «Доступно только N. Продолжить?». showQuestion — topic вместо mode. endGame — удалить bestScore, добавить bestXpPerGame. goToStart — showScreen(start) + перерендер Шага 1. ui.js — renderBestXp, renderAvailableCount. Счётчик «Доступно» — размер пула (MVP). init — loadFromStorage, начальный UI, слушатели на bulk/Темы/Начало/Назад/count-btn; getStartButton/setStartButtonReady больше нет; активация «Начало» при данные+регионы+темы.
->
-> **Экран результата:** «Играть снова» → goToStart; опц. строка «Рекорд: N XP».
->
-> **Краевые случаи:** пусто/битый LS → дефолты; нет регионов/тем → «Начало» disabled; 100 при пуле 47 → alert «Доступно только 47. Продолжить?»; reload во время игры → партия теряется, Шаг 1 с настройками.
->
-> **Не трогать:** подсказку, таймер, экран результата ответа, XP-начисление в handleAnswer, кнопку «На главную», data.js. Кеш-busting `?v=20260525`.
->
-> **CLAUDE.md после работы:** в «Сделано» — про новый поток; «В работе» → нет задач; «Дальше» — поднять расширение тем; ключи localStorage (новые + старые как deprecated); удалить «Следующая большая правка»; «Режимы игры» → «Темы вопросов».
->
-> **Перед/после:** запись #6 в PROMPTS_LOG (передан → выполнен + результат). Если что-то не сходится с кодом — ОСТАНОВИСЬ и спроси, не додумывай.
+**Промпт:** [сжато — полный текст в истории Cowork]
 
 **Результат / расхождения:**
 - **Согласованное отклонение от промпта:** добавил поле `region` в запрос `data.js` (`?fields=...,region`). Без него `country.region` приходит `undefined` и фильтр по регионам в принципе не работает — это дыра в формулировке промпта («не трогать data.js»), остановился и согласовал с Алексеем/Cowork в чате. Это единственная правка data.js, геттеры и capitals_ru не трогал.
@@ -220,23 +196,7 @@
 
 **Автор промпта:** Cowork
 
-**Промпт (полный текст, передан в терминал 2026-05-24):**
-
-> Реализуй XP-накопление с сохранением и отображением.
->
-> **Продуктовое описание.** Сейчас на экране результата ответа показывается «+10 XP», но это только надпись — нигде не сохраняется. Нужно: за каждый правильный ответ +10 XP, общий XP игрока копится между партиями (один счётчик, общий для всех режимов), отображается на главном экране и на экране результата партии. Подсказка на начисление не влияет — XP полный. MVP: фиксированные 10 XP, без уровней/формул/бонусов.
->
-> **1. js/main.js:** константа `XP_PER_CORRECT = 10` рядом с `QUESTION_TIME_SEC`; в `STORAGE` ключ `xpTotal: "geogame:xpTotal"` (строка, не функция — общий XP); в `state` поля `xpTotal: 0`, `xpEarnedThisGame: 0`; в `loadFromStorage` — `state.xpTotal = Number(localStorage.getItem(STORAGE.xpTotal)) || 0`; в `startGame` после `state.score = 0` — `state.xpEarnedThisGame = 0` (xpTotal не трогать); в `handleAnswer` блок начисления: при `isCorrect` — `state.score++`, `state.xpTotal += XP_PER_CORRECT`, `state.xpEarnedThisGame += XP_PER_CORRECT`, `localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal))` (без условий с hintUsed); в `endGame` после `renderGamesPlayed` — `renderGameXp(state.xpEarnedThisGame, state.xpTotal)` и `renderXpTotal(state.xpTotal)`; в `init` после `renderBestScore` — `renderXpTotal(state.xpTotal)`; импорт `renderXpTotal`, `renderGameXp` из ui.js.
->
-> **2. js/ui.js:** `renderXpTotal(n)` → `#xp-total`.textContent; `renderGameXp(earned, total)` → `#game-xp-earned` и `#game-xp-total`.
->
-> **3. index.html:** на `#start-screen` после `<p class="record">` — `<p class="xp-total">Опыт: <span id="xp-total">0</span></p>`; на `#result-screen` перед `<p class="games-played">` — `<p class="game-xp">Получено за партию: <span id="game-xp-earned">0</span> XP. Всего: <span id="game-xp-total">0</span> XP</p>`.
->
-> **4. css/style.css:** `.xp-total` (как `.record`: margin 0 0 16px, 14px, #2c7be5, 600); `.game-xp` (как `.games-played`: margin 0 0 12px, 14px, #2c7be5, 600).
->
-> **5. CLAUDE.md:** в «Текущий статус» → «Сделано» добавить пункт про XP; из «Дальше» удалить пункт 1 (XP), сдвинуть нумерацию; упомянуть ключ в «Соглашения → Ключи localStorage».
->
-> **Краевые случаи:** первая игра → 0 через `|| 0`; истёк таймер → handleAnswer не зовётся, XP не начисляется (корректно); правильно с подсказкой → XP полный; ошибка с подсказкой → XP нет; «На главную» в партии → xpTotal уже сохранён. **Не трогать:** рекорды, подсказку, таймер, экран результата ответа (не дублировать накопление в renderAnswerResult), state.score/gamesPlayed, никаких уровней/формул.
+**Промпт:** [сжато — полный текст в истории Cowork]
 
 **Результат / расхождения:**
 - **Тронуты:** `js/main.js` (XP_PER_CORRECT, STORAGE.xpTotal, state.xpTotal/xpEarnedThisGame, loadFromStorage, startGame, handleAnswer, endGame, init, импорт), `js/ui.js` (renderXpTotal, renderGameXp), `index.html` (`.xp-total` на старте, `.game-xp` на результате), `css/style.css` (`.xp-total`, `.game-xp`), `CLAUDE.md` (статус + ключ localStorage).
@@ -279,23 +239,7 @@
 
 **Автор промпта:** Cowork
 
-**Промпт (полный текст, передан в терминал 2026-05-24):**
-
-> Реализуй кнопку «Подсказка» в игровом экране GeoGame.
->
-> **Продуктовое описание.** Кнопка «Подсказка» появляется в строке управления над вопросом, между [Время] и [Вопрос X из Y]. Тап → 2 случайных неверных варианта из 4 пропадают, остаются правильный + 1 неверный. После использования кнопка остаётся видимой, но становится серой и неактивной до конца партии. На партию даётся одна подсказка. Сбрасывается при старте новой партии. Это MVP — без счётчика, без localStorage, без подсказок по сложности.
->
-> **1. index.html** — в `.meta` (game-screen): удалить `<span id="q-score">` целиком; между `#q-timer` и `#q-counter` вставить `<button id="hint-btn" class="hint-btn" type="button">Подсказка</button>`. Порядок: [#q-timer] [#hint-btn] [#q-counter].
->
-> **2. css/style.css** — `.hint-btn`: стиль как `.option-btn` (синий градиент `#4fc3f7→#0288d1`, рамка `#b0bec5`, белый жирный текст), но `padding: 6px 18px; font-size: 14px; border-radius: 12px; min-height: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3)`. Hover (не disabled) — `filter: brightness(1.15)`, active — `transform: scale(0.97)`. `.hint-btn:disabled` — `filter: grayscale(1); opacity: 0.45; cursor: not-allowed`, снять hover. В `.meta` — `align-items: center`, сохранить `justify-content: space-between`.
->
-> **3. js/ui.js** — экспортировать `getHintButton()`, `setHintButtonState(enabled)` (disabled = !enabled), `applyHintToOptions(buttons, correctValue)` (находит 3 неверные кнопки, случайно скрывает 2 через `style.visibility = "hidden"`, сетка 2×2 сохраняется). `renderQuestion` не менять.
->
-> **4. js/main.js** — в state добавить `hintUsed: false`; в `startGame()` сброс `state.hintUsed = false`. Импортировать `getHintButton`, `setHintButtonState`, `applyHintToOptions`. В `showQuestion` сохранить массив `buttons` и `correct` (предложено в `state.currentButtons`/`state.currentCorrect`), в конце вызвать `setHintButtonState(!state.hintUsed)`. Функция `handleHintClick()`: если `hintUsed` → return; иначе `hintUsed = true`, `applyHintToOptions(state.currentButtons, state.currentCorrect)`, `setHintButtonState(false)`. В `init()` повесить листенер. В `handleAnswer` тоже `setHintButtonState(false)`.
->
-> **Краевые случаи:** подсказка не работает на экране результата (`.meta` скрыта); двойной клик отбивается флагом `hintUsed`; сброс при новой партии. **Не трогать:** `.option-btn`, таймер, экран результата, data.js, localStorage. Счёт убрать из строки управления, но `state.score` оставить (показывается на экране результата партии).
->
-> Перед работой — запись в PROMPTS_LOG.md (статус «передан»), после — «выполнен» + результат. После: какие файлы тронул, что неочевидно, на что смотреть при проверке.
+**Промпт:** [сжато — полный текст в истории Cowork]
 
 **Результат / расхождения:**
 - **Тронуты:** `index.html` (кнопка в `.meta`, удалён `#q-score`), `css/style.css` (`.hint-btn` + `.meta align-items:center`), `js/ui.js` (`getHintButton`/`setHintButtonState`/`applyHintToOptions`, убрана строка обновления `#q-score`), `js/main.js` (`state.hintUsed`/`currentButtons`/`currentCorrect`, сброс в `startGame`, `handleHintClick`, листенер в `init`, `setHintButtonState(false)` в `handleAnswer`, сохранение buttons/correct в `showQuestion`).
