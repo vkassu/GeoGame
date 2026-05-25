@@ -762,18 +762,13 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 
 /* === #menu-screen === */
-/* Плотная тёмная карточка (не прозрачная!) — иначе светлый текст и
-   полупрозрачные панели сливаются с ярким фото Земли под меню.
-   Тёмный фон держит контраст для белого текста профиля/кнопок. */
-#menu-screen {
-  background: #141a2e;
-  color: #fff;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.45);
-}
+/* Меню — такая же белая карточка, как остальные экраны (единая светлая гамма):
+   тёмный текст на белом, голубые глянцевые кнопки. #menu-screen НЕ переопределяет
+   фон — наследует .screen (белый). */
 
 .menu-profile {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: #f4f7fa;
+  border: 1px solid #e3e8ee;
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 20px;
@@ -786,10 +781,11 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 .menu-avatar { border-radius: 50%; object-fit: cover; }
 .menu-guest-icon { font-size: 1.5rem; line-height: 1; }
-.menu-username { flex: 1; text-align: left; font-size: 1rem; font-weight: bold; }
+.menu-username { flex: 1; text-align: left; font-size: 1rem; font-weight: bold; color: #1a1a1a; }
 .menu-level-badge {
-  background: rgba(255,255,255,0.15);
-  border: 2px solid rgba(255,255,255,0.4);
+  background: #e3f2fd;
+  border: 2px solid #4fc3f7;
+  color: #0277bd;
   border-radius: 8px;
   padding: 2px 10px;
   font-size: 1rem;
@@ -811,28 +807,33 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   gap: 2px;
 }
 .menu-inv-icon { font-size: 1.4rem; }
-.menu-inv-count { font-size: 0.85rem; font-weight: bold; color: rgba(255,255,255,0.85); }
+.menu-inv-count { font-size: 0.85rem; font-weight: bold; color: #2c3e50; }
 
 /* Кнопки меню */
 .menu-buttons { display: flex; flex-direction: column; gap: 10px; }
 .menu-btn {
   padding: 14px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.25);
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  border: 2px solid #d0d7de;
+  background: #fff;
+  color: #2c3e50;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s;
+  transition: border-color .15s, background .15s, filter .15s, transform .1s;
 }
-.menu-btn:hover { background: rgba(255,255,255,0.18); }
+.menu-btn:hover { border-color: #aab4be; background: #f7f9fb; }
+.menu-btn:active { transform: scale(0.99); }
+/* Главная кнопка «Новая игра» — голубой глянец, как «Начало»/«Темы» */
 .menu-btn-primary {
-  background: rgba(33,150,243,0.6);
-  border-color: rgba(100,181,246,0.5);
+  background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+  border-color: #b0bec5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.3);
+  color: #fff;
   font-size: 1.1rem;
+  font-weight: bold;
 }
-.menu-btn-primary:hover { background: rgba(33,150,243,0.8); }
+.menu-btn-primary:hover { border-color: #b0bec5; background: linear-gradient(to bottom, #4fc3f7, #0288d1); filter: brightness(1.1); }
 .menu-btn-row { display: flex; gap: 10px; }
 .menu-btn-half { flex: 1; }
