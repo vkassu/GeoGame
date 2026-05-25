@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260529">
+  <link rel="stylesheet" href="css/style.css?v=20260531">
 </head>
 <body>
   <header class="topbar">
-    <button id="home-btn" class="home-btn" hidden>← На главную</button>
+    <button id="home-btn" class="home-btn" data-i18n="nav.home" hidden>← На главную</button>
     <h1>GeoGame</h1>
+    <button id="lang-btn" class="lang-btn">EN</button>
   </header>
   <div id="status">Загрузка данных с restcountries.com…</div>
 
@@ -17,44 +18,44 @@
     <!-- Шаг 1: Регионы (стартовый экран) -->
     <section id="start-screen" class="screen active">
       <div class="setup-panel">
-        <h2 class="setup-title">Регионы</h2>
+        <h2 class="setup-title" data-i18n="regions.title">Регионы</h2>
         <div class="region-grid" id="region-grid"></div>
         <div class="setup-bulk">
-          <button type="button" class="bulk-btn" id="regions-clear">Очистить всё</button>
-          <button type="button" class="bulk-btn" id="regions-all">Выбрать всё</button>
+          <button type="button" class="bulk-btn" id="regions-clear" data-i18n="regions.clear">Очистить всё</button>
+          <button type="button" class="bulk-btn" id="regions-all" data-i18n="regions.all">Выбрать всё</button>
         </div>
       </div>
 
       <div class="setup-info">
         <div class="setup-info-row">
-          <span>Доступно вопросов: <span id="available-count">—</span></span>
-          <span>Опыт: <span id="xp-total">0</span></span>
+          <span><span data-i18n="regions.available">Доступно вопросов:</span> <span id="available-count">—</span></span>
+          <span><span data-i18n="regions.xp">Опыт:</span> <span id="xp-total">0</span> <span data-i18n="regions.xp-unit">XP</span></span>
         </div>
         <div class="setup-info-row">
-          <span>Рекорд: <span id="best-xp">0</span> XP</span>
+          <span><span data-i18n="regions.record">Рекорд:</span> <span id="best-xp">0</span> XP</span>
         </div>
-        <button type="button" class="topics-btn" id="open-topics-btn">Темы</button>
+        <button type="button" class="topics-btn" id="open-topics-btn" data-i18n="regions.topics-btn">Темы</button>
       </div>
 
       <div class="setup-nav">
-        <button type="button" class="nav-btn" id="regions-back" disabled>Назад</button>
-        <button type="button" class="nav-btn nav-btn-primary" id="regions-next" disabled>Начало</button>
+        <button type="button" class="nav-btn" id="regions-back" data-i18n="regions.back" disabled>Назад</button>
+        <button type="button" class="nav-btn nav-btn-primary" id="regions-next" data-i18n="regions.next" disabled>Начало</button>
       </div>
     </section>
 
     <!-- Шаг 2: Темы (опциональная боковая ветка из Шага 1) -->
     <section id="topics-screen" class="screen">
       <div class="setup-panel">
-        <h2 class="setup-title">Темы</h2>
+        <h2 class="setup-title" data-i18n="topics.title">Темы</h2>
         <div class="topic-list" id="topic-list"></div>
         <div class="setup-bulk">
-          <button type="button" class="bulk-btn" id="topics-clear">Очистить всё</button>
-          <button type="button" class="bulk-btn" id="topics-all">Выбрать всё</button>
+          <button type="button" class="bulk-btn" id="topics-clear" data-i18n="topics.clear">Очистить всё</button>
+          <button type="button" class="bulk-btn" id="topics-all" data-i18n="topics.all">Выбрать всё</button>
         </div>
       </div>
 
       <div class="setup-nav">
-        <button type="button" class="nav-btn" id="topics-back">Назад</button>
+        <button type="button" class="nav-btn" id="topics-back" data-i18n="topics.back">Назад</button>
       </div>
     </section>
 
@@ -68,14 +69,14 @@
         <button type="button" class="count-btn" data-count="100">100 вопросов</button>
       </div>
       <div class="setup-nav">
-        <button type="button" class="nav-btn" id="count-back">Назад</button>
+        <button type="button" class="nav-btn" id="count-back" data-i18n="count.back">Назад</button>
       </div>
     </section>
 
     <section id="game-screen" class="screen">
       <div class="meta">
         <span id="q-timer" class="q-timer">⏱ 30</span>
-        <button id="hint-btn" class="hint-btn" type="button">Подсказка</button>
+        <button id="hint-btn" class="hint-btn" type="button" data-i18n="game.hint">Подсказка</button>
         <span id="q-counter">Вопрос 1 из 10</span>
       </div>
       <div class="progress" aria-hidden="true">
@@ -86,30 +87,30 @@
       <div class="options" id="options"></div>
       <div id="answer-result" class="answer-result" style="display:none">
         <div class="answer-actions">
-          <button class="answer-action-btn" id="report-btn">Report</button>
-          <button class="answer-action-btn answer-action-main" id="info-btn">Информация</button>
-          <button class="answer-action-btn" id="end-btn">Конец</button>
+          <button class="answer-action-btn" id="report-btn" data-i18n="answer.report">Report</button>
+          <button class="answer-action-btn answer-action-main" id="info-btn" data-i18n="answer.info">Информация</button>
+          <button class="answer-action-btn" id="end-btn" data-i18n="answer.end">Конец</button>
         </div>
         <div id="answer-banner" class="answer-banner"></div>
         <div class="answer-body">
           <div id="answer-xp" class="answer-xp"></div>
           <div id="answer-picked" class="answer-picked"></div>
           <div id="answer-correct-val" class="answer-correct-val"></div>
-          <div class="answer-hint">(Нажмите для продолжения)</div>
+          <div class="answer-hint" data-i18n="answer.continue">(Нажмите для продолжения)</div>
         </div>
       </div>
     </section>
 
     <section id="result-screen" class="screen">
-      <h2>Игра окончена</h2>
+      <h2 data-i18n="result.title">Игра окончена</h2>
       <p class="result-text" id="result-text"></p>
-      <p class="game-xp">Получено за партию: <span id="game-xp-earned">0</span> XP. Всего: <span id="game-xp-total">0</span> XP</p>
-      <p class="game-xp">Рекорд за партию: <span id="result-best-xp">0</span> XP</p>
-      <p class="games-played">Партий сыграно: <span id="games-played">0</span></p>
-      <button id="play-again-btn" class="primary-btn">Играть снова</button>
+      <p class="game-xp"><span data-i18n="result.xp-earned">Получено за партию:</span> <span id="game-xp-earned">0</span> <span data-i18n="result.xp-total">XP. Всего:</span> <span id="game-xp-total">0</span> XP</p>
+      <p class="game-xp"><span data-i18n="result.xp-record">Рекорд за партию:</span> <span id="result-best-xp">0</span> XP</p>
+      <p class="games-played"><span data-i18n="result.games">Партий сыграно:</span> <span id="games-played">0</span></p>
+      <button id="play-again-btn" class="primary-btn" data-i18n="result.play-again">Играть снова</button>
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260529"></script>
+  <script type="module" src="js/main.js?v=20260531"></script>
 </body>
 </html>

@@ -3,10 +3,6 @@
 import {
   fetchCountries,
   hasCapital,
-  capitalName,
-  ruName,
-  populationFormatted,
-  areaFormatted,
   languageName,
   hasLanguages,
   currencyName,
@@ -14,7 +10,20 @@ import {
   nativeNameStr,
   hasNativeName,
   hasCoatOfArms,
+  getName,
+  getCapital,
+  getPopulationFormatted,
+  getAreaFormatted,
 } from "./data.js";
+import {
+  getLang,
+  setLang,
+  applyI18n,
+  t,
+  TOPIC_LABELS,
+  TOPIC_QUESTIONS,
+  REGION_LABELS,
+} from "./i18n.js";
 import {
   showScreen,
   getPlayAgainButton,
@@ -47,79 +56,80 @@ const XP_PER_CORRECT = 10;
 //   prompt  — что показывать в вопросе: { type: "flag", country } или { type: "text", text }
 //   answer  — функция, возвращающая правильный ответ (и текст вариантов)
 //   valid   — фильтр стран, пригодных для темы
+// label/question — геттеры: читают текущий язык из i18n.js в момент вызова.
 const TOPICS = {
   country: {
-    label: "Страна по флагу",
-    question: "Что это за страна?",
+    get label() { return TOPIC_LABELS.country[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.country[getLang()]; },
     prompt: (c) => ({ type: "flag", country: c }),
-    answer: ruName,
+    answer: (c) => getName(c),
     valid: () => true,
   },
   capital: {
-    label: "Столица",
-    question: "Какая столица?",
-    prompt: (c) => ({ type: "text", text: ruName(c) }),
-    answer: capitalName,
+    get label() { return TOPIC_LABELS.capital[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.capital[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
+    answer: (c) => getCapital(c),
     valid: hasCapital,
   },
   countryByCapital: {
-    label: "Страна по столице",
-    question: "Столицей какой страны является этот город?",
-    prompt: (c) => ({ type: "text", text: capitalName(c) }),
-    answer: ruName,
+    get label() { return TOPIC_LABELS.countryByCapital[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.countryByCapital[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getCapital(c) }),
+    answer: (c) => getName(c),
     valid: hasCapital,
   },
   population: {
-    label: "Население",
-    question: "Каково население?",
-    prompt: (c) => ({ type: "text", text: ruName(c) }),
-    answer: populationFormatted,
+    get label() { return TOPIC_LABELS.population[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.population[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
+    answer: (c) => getPopulationFormatted(c),
     valid: (c) => c.population > 0,
   },
   area: {
-    label: "Площадь",
-    question: "Какова площадь?",
-    prompt: (c) => ({ type: "text", text: ruName(c) }),
-    answer: areaFormatted,
+    get label() { return TOPIC_LABELS.area[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.area[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
+    answer: (c) => getAreaFormatted(c),
     valid: (c) => c.area > 0,
   },
   language: {
-    label: "Язык",
-    question: "Какой официальный язык?",
-    prompt: (c) => ({ type: "text", text: ruName(c) }),
+    get label() { return TOPIC_LABELS.language[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.language[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: languageName,
     valid: hasLanguages,
   },
   currency: {
-    label: "Валюта",
-    question: "Какая валюта?",
-    prompt: (c) => ({ type: "text", text: ruName(c) }),
+    get label() { return TOPIC_LABELS.currency[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.currency[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: currencyName,
     valid: hasCurrencies,
   },
   nativeName: {
-    label: "Самоназвание",
-    question: "Название какой страны это на родном языке?",
+    get label() { return TOPIC_LABELS.nativeName[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.nativeName[getLang()]; },
     prompt: (c) => ({ type: "text", text: nativeNameStr(c) }),
-    answer: ruName,
+    answer: (c) => getName(c),
     valid: hasNativeName,
   },
   coatOfArms: {
-    label: "Герб",
-    question: "Что это за страна?",
+    get label() { return TOPIC_LABELS.coatOfArms[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.coatOfArms[getLang()]; },
     prompt: (c) => ({ type: "coa", country: c }),
-    answer: ruName,
+    answer: (c) => getName(c),
     valid: hasCoatOfArms,
   },
 };
 
-// Регионы: ключ → { label, apiValue }. apiValue сверяется с country.region.
+// Регионы: ключ → { label (геттер, lang-aware), apiValue }. apiValue сверяется с country.region.
 const REGIONS = {
-  europe:   { label: "Европа",  apiValue: "Europe"   },
-  asia:     { label: "Азия",    apiValue: "Asia"     },
-  africa:   { label: "Африка",  apiValue: "Africa"   },
-  americas: { label: "Америка", apiValue: "Americas" },
-  oceania:  { label: "Океания", apiValue: "Oceania"  },
+  europe:   { get label() { return REGION_LABELS.europe[getLang()]; },   apiValue: "Europe"   },
+  asia:     { get label() { return REGION_LABELS.asia[getLang()]; },     apiValue: "Asia"     },
+  africa:   { get label() { return REGION_LABELS.africa[getLang()]; },   apiValue: "Africa"   },
+  americas: { get label() { return REGION_LABELS.americas[getLang()]; }, apiValue: "Americas" },
+  oceania:  { get label() { return REGION_LABELS.oceania[getLang()]; },  apiValue: "Oceania"  },
 };
 
 const QUESTION_COUNTS = [10, 25, 50, 75, 100];
@@ -135,10 +145,12 @@ const STORAGE = {
   setupTopics: "geogame:setup:topics",
   setupQuestionCount: "geogame:setup:questionCount",
   bestXpPerGame: "geogame:bestXpPerGame",
+  lang: "geogame:lang",
 };
 
 const state = {
   screen: "start",
+  lang: "ru",
   gamesPlayed: 0,
   allCountries: [],
   regionPool: [],          // страны под текущие регионы (заполняется в startGame, для дистракторов)
@@ -162,6 +174,14 @@ const state = {
 };
 
 function loadFromStorage() {
+  const savedLang = localStorage.getItem(STORAGE.lang);
+  if (savedLang === "ru" || savedLang === "en") {
+    setLang(savedLang);
+    state.lang = savedLang;
+  } else {
+    state.lang = "ru";
+  }
+
   state.gamesPlayed = Number(localStorage.getItem(STORAGE.gamesPlayed)) || 0;
   state.xpTotal = Number(localStorage.getItem(STORAGE.xpTotal)) || 0;
   state.bestXpPerGame = Number(localStorage.getItem(STORAGE.bestXpPerGame)) || 0;
@@ -264,6 +284,9 @@ function refreshSetupUI() {
   const topicItems = Object.keys(TOPICS).map((k) => ({ key: k, label: TOPICS[k].label }));
   renderRegionGrid(regionItems, new Set(state.setup.regions), toggleRegion);
   renderTopicList(topicItems, new Set(state.setup.topics), toggleTopic);
+  for (const btn of document.querySelectorAll(".count-btn")) {
+    btn.textContent = t("count.q", { n: btn.dataset.count });
+  }
   const available = state.dataLoaded ? questionPairs().length : null;
   renderAvailableCount(available === null ? "—" : available);
   // «Начало» активна только если есть хотя бы один реальный вопрос.
@@ -308,13 +331,13 @@ function startGame() {
   const pairs = questionPairs();
 
   if (pairs.length === 0) {
-    alert("Нет вопросов под выбранные настройки. Измените регионы или темы.");
+    alert(t("alert.no-questions"));
     return;
   }
 
   let count = state.setup.questionCount;
   if (count > pairs.length) {
-    if (!confirm(`Доступно только ${pairs.length} вопросов. Продолжить?`)) return;
+    if (!confirm(t("alert.limited", { n: pairs.length }))) return;
     count = pairs.length;
   }
 
@@ -462,19 +485,48 @@ function goToStart() {
 // Возврат на главную (Шаг 1). Если партия идёт — спрашиваем подтверждение.
 function goHome() {
   if (state.screen === "game" && !state.isGameOver) {
-    if (!confirm("Прервать текущую партию и вернуться на главную?")) return;
+    if (!confirm(t("alert.go-home"))) return;
   }
   goToStart();
+}
+
+function switchLang() {
+  const next = getLang() === "ru" ? "en" : "ru";
+  setLang(next);
+  state.lang = next;
+  localStorage.setItem(STORAGE.lang, next);
+  updateLangButton();
+  applyI18n();
+  renderStatus();
+  refreshSetupUI();
+}
+
+function updateLangButton() {
+  const btn = document.getElementById("lang-btn");
+  if (btn) btn.textContent = getLang() === "ru" ? "EN" : "RU";
+}
+
+// Статусная строка по состоянию (на текущем языке). Ошибка выставляется отдельно в init.
+function renderStatus() {
+  const el = document.getElementById("status");
+  if (!el || el.classList.contains("error")) return;
+  el.textContent = state.dataLoaded
+    ? t("status.loaded", { n: state.allCountries.length })
+    : t("status.loading");
 }
 
 async function init() {
   const statusEl = document.getElementById("status");
 
   loadFromStorage();
+  applyI18n();
+  updateLangButton();
+  renderStatus();
   renderXpTotal(state.xpTotal);
   renderBestXp(state.bestXpPerGame);
   refreshSetupUI();
 
+  document.getElementById("lang-btn").addEventListener("click", switchLang);
   getPlayAgainButton().addEventListener("click", goToStart);
   getHomeButton().addEventListener("click", goHome);
   getHintButton().addEventListener("click", handleHintClick);
@@ -489,7 +541,7 @@ async function init() {
   });
   document.getElementById("end-btn").addEventListener("click", (e) => {
     e.stopPropagation();
-    if (confirm("Завершить партию досрочно?")) endGame();
+    if (confirm(t("alert.end-early"))) endGame();
   });
 
   // Шаг 1 — регионы
@@ -514,11 +566,11 @@ async function init() {
     const all = await fetchCountries();
     state.allCountries = all;
     state.dataLoaded = true;
-    statusEl.textContent = `Загружено стран: ${all.length}`;
+    renderStatus();
     refreshSetupUI(); // обновить «доступно вопросов» и активировать «Начало»
   } catch (err) {
     statusEl.className = "error";
-    statusEl.textContent = "Ошибка загрузки: " + err.message;
+    statusEl.textContent = t("status.error", { msg: err.message });
     console.error(err);
   }
 }

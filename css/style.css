@@ -73,6 +73,24 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 .home-btn:hover { border-color: #aab4be; background: #f7f9fb; }
 .home-btn[hidden] { display: none; }
+
+.lang-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.4);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  font-family: inherit;
+}
+.lang-btn:hover { background: rgba(255,255,255,0.15); }
 #status { margin: 8px 0 16px; color: #9aa3b8; text-align: center; font-size: 14px; }
 #status.error { color: #c0392b; font-weight: bold; }
 

@@ -2,6 +2,7 @@
 // Никакой игровой логики и state — только DOM.
 
 import { codeToEmoji } from "./data.js";
+import { t } from "./i18n.js";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -45,10 +46,10 @@ export function applyHintToOptions(buttons, correctValue) {
 export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
   const banner = document.getElementById("answer-banner");
   banner.className = "answer-banner " + (isCorrect ? "correct" : "wrong");
-  banner.textContent = isCorrect ? "Правильный ответ" : "Неправильный ответ";
+  banner.textContent = isCorrect ? t("answer.correct") : t("answer.wrong");
 
   document.getElementById("answer-xp").textContent = isCorrect ? "+10 XP" : "";
-  document.getElementById("answer-picked").textContent = isCorrect ? "" : `Ваш ответ: ${pickedValue}`;
+  document.getElementById("answer-picked").textContent = isCorrect ? "" : t("answer.your", { v: pickedValue });
   document.getElementById("answer-correct-val").textContent = correctValue;
 }
 export function showAnswerResult() {
@@ -198,7 +199,7 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
     }
   }
 
-  document.getElementById("q-counter").textContent = `Вопрос ${questionNumber} из ${total}`;
+  document.getElementById("q-counter").textContent = t("game.counter", { i: questionNumber, n: total });
   document.getElementById("progress-bar").style.width = `${(questionNumber / total) * 100}%`;
 
   const optsEl = document.getElementById("options");
@@ -220,5 +221,5 @@ export function markAnswer(btn, kind) {
 
 export function renderResult(score, total) {
   document.getElementById("result-text").textContent =
-    `Ты ответил правильно ${score} из ${total}`;
+    t("result.score", { score, total });
 }

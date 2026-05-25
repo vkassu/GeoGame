@@ -1,5 +1,7 @@
 // Слой данных: запрос к restcountries.com и геттеры полей страны.
 
+import { getLang } from "./i18n.js";
+
 // v3.1 требует ?fields=..., иначе 400.
 // /all ограничивает запрос максимум 10 полями, а нам нужно 11 → два запроса, слияние по cca2.
 export const API_URL = "https://restcountries.com/v3.1/all?fields=name,translations,capital,population,flags,cca2,region";
@@ -112,6 +114,48 @@ export function hasNativeName(country) {
 // Герб
 export function hasCoatOfArms(country) {
   return !!(country.coatOfArms && (country.coatOfArms.svg || country.coatOfArms.png));
+}
+
+// ---- Язык-зависимые обёртки (выбор RU/EN по getLang()) ----
+
+// Имя страны
+export function getName(country) {
+  return getLang() === "en" ? engName(country) : ruName(country);
+}
+
+// Название столицы
+export function getCapital(country) {
+  if (getLang() === "en") {
+    return Array.isArray(country.capital) && country.capital.length
+      ? country.capital[0]
+      : "—";
+  }
+  return capitalName(country);
+}
+
+// Форматирование населения
+export function getPopulationFormatted(country) {
+  const n = country.population;
+  if (!n) return "—";
+  if (getLang() === "en") {
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + " billion";
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + " million";
+    if (n >= 1e3) return Math.round(n / 1e3) + " thousand";
+    return String(n);
+  }
+  return populationFormatted(country);
+}
+
+// Форматирование площади
+export function getAreaFormatted(country) {
+  const n = country.area;
+  if (!n || n <= 0) return "—";
+  if (getLang() === "en") {
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + " million km²";
+    if (n >= 1e3) return n.toLocaleString("en-US") + " km²";
+    return n + " km²";
+  }
+  return areaFormatted(country);
 }
 
 // Загружает страны двумя запросами (лимит /all — 10 полей), сливает доп. поля по cca2,

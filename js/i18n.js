@@ -1,0 +1,146 @@
+// Единый источник переводимых строк (RU/EN) и язык-зависимых словарей тем/регионов.
+
+let _lang = "ru";
+
+export function getLang() { return _lang; }
+export function setLang(lang) { _lang = lang; }
+
+// Словарь всех UI-строк
+const STRINGS = {
+  ru: {
+    "status.loading": "Загрузка данных с restcountries.com…",
+    "status.loaded": "Загружено стран: {n}",
+    "status.error": "Ошибка загрузки: {msg}",
+    "regions.title": "Регионы",
+    "regions.available": "Доступно вопросов:",
+    "regions.xp": "Опыт:",
+    "regions.record": "Рекорд:",
+    "regions.xp-unit": "XP",
+    "regions.topics-btn": "Темы",
+    "regions.clear": "Очистить всё",
+    "regions.all": "Выбрать всё",
+    "regions.back": "Назад",
+    "regions.next": "Начало",
+    "topics.title": "Темы",
+    "topics.clear": "Очистить всё",
+    "topics.all": "Выбрать всё",
+    "topics.back": "Назад",
+    "count.q": "{n} вопросов",
+    "count.back": "Назад",
+    "game.hint": "Подсказка",
+    "game.counter": "Вопрос {i} из {n}",
+    "answer.correct": "Правильный ответ",
+    "answer.wrong": "Неправильный ответ",
+    "answer.your": "Ваш ответ: {v}",
+    "answer.continue": "(Нажмите для продолжения)",
+    "answer.report": "Report",
+    "answer.info": "Информация",
+    "answer.end": "Конец",
+    "result.title": "Игра окончена",
+    "result.score": "Ты ответил правильно {score} из {total}",
+    "result.xp-earned": "Получено за партию:",
+    "result.xp-total": "XP. Всего:",
+    "result.xp-record": "Рекорд за партию:",
+    "result.games": "Партий сыграно:",
+    "result.play-again": "Играть снова",
+    "alert.no-questions": "Нет вопросов под выбранные настройки. Измените регионы или темы.",
+    "alert.limited": "Доступно только {n} вопросов. Продолжить?",
+    "alert.go-home": "Прервать текущую партию и вернуться на главную?",
+    "alert.end-early": "Завершить партию досрочно?",
+    "nav.home": "← На главную",
+  },
+  en: {
+    "status.loading": "Loading data from restcountries.com…",
+    "status.loaded": "Countries loaded: {n}",
+    "status.error": "Loading error: {msg}",
+    "regions.title": "Regions",
+    "regions.available": "Available questions:",
+    "regions.xp": "XP:",
+    "regions.record": "Best:",
+    "regions.xp-unit": "XP",
+    "regions.topics-btn": "Topics",
+    "regions.clear": "Clear all",
+    "regions.all": "Select all",
+    "regions.back": "Back",
+    "regions.next": "Start",
+    "topics.title": "Topics",
+    "topics.clear": "Clear all",
+    "topics.all": "Select all",
+    "topics.back": "Back",
+    "count.q": "{n} questions",
+    "count.back": "Back",
+    "game.hint": "Hint",
+    "game.counter": "Question {i} of {n}",
+    "answer.correct": "Correct answer",
+    "answer.wrong": "Wrong answer",
+    "answer.your": "Your answer: {v}",
+    "answer.continue": "(Tap to continue)",
+    "answer.report": "Report",
+    "answer.info": "Info",
+    "answer.end": "End",
+    "result.title": "Game over",
+    "result.score": "You answered correctly {score} of {total}",
+    "result.xp-earned": "XP earned this round:",
+    "result.xp-total": "XP. Total:",
+    "result.xp-record": "Best round:",
+    "result.games": "Games played:",
+    "result.play-again": "Play again",
+    "alert.no-questions": "No questions for selected settings. Change regions or topics.",
+    "alert.limited": "Only {n} questions available. Continue?",
+    "alert.go-home": "Quit current game and go to main screen?",
+    "alert.end-early": "End game early?",
+    "nav.home": "← Home",
+  },
+};
+
+// Получить строку с подстановкой переменных: t("status.loaded", { n: 250 })
+export function t(key, vars = {}) {
+  const dict = STRINGS[_lang] || STRINGS["ru"];
+  let s = dict[key] || STRINGS["ru"][key] || key;
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.replace(`{${k}}`, v);
+  }
+  return s;
+}
+
+// Обновить все элементы с data-i18n="key" в DOM
+export function applyI18n() {
+  for (const el of document.querySelectorAll("[data-i18n]")) {
+    el.textContent = t(el.dataset.i18n);
+  }
+}
+
+// Язык-зависимые метки тем
+export const TOPIC_LABELS = {
+  country:          { ru: "Страна по флагу",   en: "Country by flag" },
+  capital:          { ru: "Столица",            en: "Capital" },
+  countryByCapital: { ru: "Страна по столице",  en: "Country by capital" },
+  population:       { ru: "Население",          en: "Population" },
+  area:             { ru: "Площадь",            en: "Area" },
+  language:         { ru: "Язык",               en: "Language" },
+  currency:         { ru: "Валюта",             en: "Currency" },
+  nativeName:       { ru: "Самоназвание",       en: "Native name" },
+  coatOfArms:       { ru: "Герб",               en: "Coat of arms" },
+};
+
+// Язык-зависимые тексты вопросов
+export const TOPIC_QUESTIONS = {
+  country:          { ru: "Что это за страна?",                          en: "What country is this?" },
+  capital:          { ru: "Какая столица?",                              en: "What is the capital?" },
+  countryByCapital: { ru: "Столицей какой страны является этот город?",  en: "Which country has this capital?" },
+  population:       { ru: "Каково население?",                           en: "What is the population?" },
+  area:             { ru: "Какова площадь?",                             en: "What is the area?" },
+  language:         { ru: "Какой официальный язык?",                     en: "What is the official language?" },
+  currency:         { ru: "Какая валюта?",                               en: "What is the currency?" },
+  nativeName:       { ru: "Название какой страны это на родном языке?",  en: "Which country has this native name?" },
+  coatOfArms:       { ru: "Что это за страна?",                          en: "What country is this?" },
+};
+
+// Язык-зависимые названия регионов
+export const REGION_LABELS = {
+  europe:   { ru: "Европа",  en: "Europe" },
+  asia:     { ru: "Азия",    en: "Asia" },
+  africa:   { ru: "Африка",  en: "Africa" },
+  americas: { ru: "Америка", en: "Americas" },
+  oceania:  { ru: "Океания", en: "Oceania" },
+};
