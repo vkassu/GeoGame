@@ -51,7 +51,7 @@ import {
   animateXPBar,
   showLevelUpBanner,
   hideLevelUpBanner,
-} from "./ui.js?v=20260539";
+} from "./ui.js?v=20260540";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
@@ -647,6 +647,40 @@ function applyUserData(data) {
   renderGamesPlayed(state.gamesPlayed);
 }
 
+// Полный сброс прогресса («как в первый раз»): XP/рекорд/партии/инвентарь/выбор тем.
+// Чистит localStorage и, если пользователь залогинен, обнуляет его документ в Firestore.
+function resetProgress() {
+  if (!confirm(t("reset.confirm"))) return;
+
+  state.xpTotal = 0;
+  state.bestXpPerGame = 0;
+  state.gamesPlayed = 0;
+  state.xpEarnedThisGame = 0;
+  state.inventory = { ...DEFAULT_INVENTORY };
+  state.setup.topicDifficulties = { ...DEFAULT_TOPIC_DIFFICULTIES };
+
+  localStorage.setItem(STORAGE.xpTotal, "0");
+  localStorage.setItem(STORAGE.bestXpPerGame, "0");
+  localStorage.setItem(STORAGE.gamesPlayed, "0");
+  localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory));
+  persistTopicDifficulties();
+
+  // Облако: перезаписываем документ нулями, иначе при следующем входе оно вернёт прогресс.
+  if (state.user) {
+    saveUserData(state.user.uid, {
+      xpTotal: 0,
+      bestXpPerGame: 0,
+      gamesPlayed: 0,
+      inventory: state.inventory,
+    }).catch(console.error);
+  }
+
+  renderXpTotal(state.xpTotal);
+  renderBestXp(state.bestXpPerGame);
+  renderGamesPlayed(state.gamesPlayed);
+  refreshSetupUI();
+}
+
 // Обновить блок авторизации на стартовом экране.
 function renderAuthUI(user) {
   const btn   = document.getElementById("auth-btn");
@@ -691,6 +725,7 @@ async function init() {
   refreshSetupUI();
 
   document.getElementById("lang-btn").addEventListener("click", switchLang);
+  document.getElementById("reset-progress-btn")?.addEventListener("click", resetProgress);
 
   // Авторизация (Firebase). Подписка fires асинхронно — к этому моменту
   // loadFromStorage() уже выполнен, поэтому локальные данные пригодны для миграции.

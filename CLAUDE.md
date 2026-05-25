@@ -23,6 +23,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - **Гостевой режим:** без входа всё работает как раньше — только localStorage. `state.user = null`.
 - **Миграция:** первый вход (документ ещё не существует) переносит локальные `xpTotal/bestXpPerGame/gamesPlayed/lang` в Firestore (`loadUserData`). Последующие входы берут облачные данные и пишут их в localStorage (`applyUserData`). Возврат гостевого прогресса в облако — только при самом первом входе.
 - **Сохранение:** `endGame()` пишет xp/best/games, `switchLang()` пишет `lang` (оба — только если `state.user`).
+- **Сброс прогресса:** кнопка «Сбросить прогресс» (`#reset-progress-btn` на стартовом экране) → `resetProgress()` обнуляет XP/рекорд/партии/инвентарь/выбор тем в localStorage и (если залогинен) в Firestore. Облако обязательно перезаписывается нулями — иначе следующий вход вернул бы прогресс.
 - **Firestore rules (ручной шаг в Console, не в репо):** пользователь читает/пишет только свой документ — `match /users/{userId} { allow read, write: if request.auth.uid == userId; }`. Плюс в Console: включить Google в Sign-in method и добавить `vkassu.github.io` + `localhost` в Authorized Domains.
 - **Не проверяемо в preview:** реальный OAuth-вход (popup на gstatic/Google), Firestore I/O, миграция — только на деплое. См. PROMPTS_LOG #15, #18.
 

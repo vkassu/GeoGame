@@ -65,6 +65,8 @@ const STRINGS = {
     "inv.hints":      "Подсказки",
     "inv.lives":      "Жизни",
     "inv.chests":     "Сундуки",
+    "reset.progress": "Сбросить прогресс",
+    "reset.confirm":  "Сбросить весь прогресс (опыт, рекорд, партии, выбор тем)? Это нельзя отменить.",
   },
   en: {
     "status.loading": "Loading data from restcountries.com…",
@@ -124,6 +126,8 @@ const STRINGS = {
     "inv.hints":      "Hints",
     "inv.lives":      "Lives",
     "inv.chests":     "Chests",
+    "reset.progress": "Reset progress",
+    "reset.confirm":  "Reset all progress (XP, best, games, topic selection)? This cannot be undone.",
   },
 };
 
