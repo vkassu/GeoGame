@@ -388,7 +388,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 
 .options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-top: 8px;
 }

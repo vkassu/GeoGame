@@ -39,7 +39,7 @@ export function applyHintToOptions(buttons, correctValue) {
     [wrong[i], wrong[j]] = [wrong[j], wrong[i]];
   }
   wrong.slice(0, 2).forEach((b) => {
-    b.button.style.visibility = "hidden";
+    b.button.style.display = "none";
   });
 }
 
@@ -202,8 +202,7 @@ export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationM
   const levelFrom = document.getElementById("xp-level-from");
   const levelTo = document.getElementById("xp-level-to");
 
-  const startLevel = getXPProgress(startXP).level;
-  let levelUpFired = false;
+  let lastFiredLevel = getXPProgress(startXP).level;
   const start = performance.now();
 
   function tick(now) {
@@ -218,8 +217,8 @@ export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationM
     fill.style.width = (prog.percent * 100).toFixed(1) + "%";
     caption.textContent = prog.xpInLevel + " / " + prog.xpNeeded + " XP";
 
-    if (!levelUpFired && prog.level > startLevel) {
-      levelUpFired = true;
+    if (prog.level > lastFiredLevel) {
+      lastFiredLevel = prog.level;
       onLevelUp(prog.level);
     }
 

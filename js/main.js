@@ -52,7 +52,7 @@ import {
   showLevelUpBanner,
   hideLevelUpBanner,
   renderMenuProfile,
-} from "./ui.js?v=20260543";
+} from "./ui.js?v=20260544";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
@@ -700,6 +700,7 @@ function resetProgress() {
   renderBestXp(state.bestXpPerGame);
   renderGamesPlayed(state.gamesPlayed);
   refreshSetupUI();
+  refreshMenuScreen();
 }
 
 // Обновить блок авторизации на стартовом экране.
