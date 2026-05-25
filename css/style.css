@@ -32,20 +32,26 @@ body::before {
     radial-gradient(1px 1px at 80vw 40vh, rgba(255,255,255,.45), transparent);
 }
 
-/* Полукруг планеты Земля снизу */
+/* Глобус Земли снизу — реальный снимок NASA (Public Domain) */
 body::after {
   content: "";
   position: fixed;
   left: 50%;
-  bottom: 0;
+  bottom: -35vw;
   transform: translateX(-50%);
-  width: 120vw;
-  height: 40vw;
+  width: 100vw;
+  height: 100vw;
   z-index: -1;
   pointer-events: none;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 32%, #1f4a5c 0%, #163d50 45%, #0d1b2a 75%);
-  box-shadow: 0 0 80px rgba(40,110,120,.35), inset 0 6px 40px rgba(120,220,200,.12);
+  background-image: url('../img/earth.jpg');
+  background-size: cover;
+  background-position: center 30%;
+  /* Атмосферное свечение поверх фото */
+  box-shadow:
+    0 0 60px 10px rgba(60, 140, 200, 0.45),
+    0 0 120px 20px rgba(30, 80, 140, 0.30),
+    inset 0 -20px 60px rgba(0, 0, 0, 0.5);
 }
 .topbar {
   position: relative;
