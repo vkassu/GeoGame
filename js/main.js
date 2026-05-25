@@ -51,7 +51,8 @@ import {
   animateXPBar,
   showLevelUpBanner,
   hideLevelUpBanner,
-} from "./ui.js?v=20260540";
+  renderMenuProfile,
+} from "./ui.js?v=20260541";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
@@ -175,7 +176,7 @@ const STORAGE = {
 };
 
 const state = {
-  screen: "start",
+  screen: "menu",
   user: null,              // { uid, name, photo } или null (гость)
   gamesPlayed: 0,
   allCountries: [],
@@ -601,12 +602,31 @@ function goToStart() {
   showScreen(state.screen);
 }
 
-// Возврат на главную (Шаг 1). Если партия идёт — спрашиваем подтверждение.
+// Перерисовать профиль в главном меню (аватар, имя, уровень, XP-бар, инвентарь, кнопки).
+function refreshMenuScreen() {
+  renderMenuProfile({
+    avatarUrl: state.user?.photo ?? null,
+    username: state.user?.name ?? t("menu.guest"),
+    level: getLevelFromXP(state.xpTotal),
+    xpProgress: getXPProgress(state.xpTotal),
+    inventory: state.inventory,
+    isLoggedIn: !!state.user,
+    lang: getLang(),
+  });
+}
+
+function goToMenu() {
+  state.screen = "menu";
+  refreshMenuScreen();
+  showScreen(state.screen);
+}
+
+// Кнопка «На главную» (← меню). Если партия идёт — спрашиваем подтверждение.
 function goHome() {
   if (state.screen === "game" && !state.isGameOver) {
     if (!confirm(t("alert.go-home"))) return;
   }
-  goToStart();
+  goToMenu();
 }
 
 function switchLang() {
@@ -617,6 +637,7 @@ function switchLang() {
   applyI18n();
   renderStatus();
   refreshSetupUI();
+  refreshMenuScreen();
   if (state.user) {
     saveUserData(state.user.uid, { lang: next }).catch(console.error);
   }
@@ -723,9 +744,21 @@ async function init() {
   renderXpTotal(state.xpTotal);
   renderBestXp(state.bestXpPerGame);
   refreshSetupUI();
+  refreshMenuScreen();
+  showScreen("menu");
 
   document.getElementById("lang-btn").addEventListener("click", switchLang);
   document.getElementById("reset-progress-btn")?.addEventListener("click", resetProgress);
+
+  // Главное меню
+  document.getElementById("menu-new-game-btn").addEventListener("click", goToStart);
+  document.getElementById("menu-encyclopedia-btn").addEventListener("click", () => console.log("Энциклопедия: не реализовано"));
+  document.getElementById("menu-quests-btn").addEventListener("click", () => console.log("Задания: не реализовано"));
+  document.getElementById("menu-auth-btn").addEventListener("click", () => {
+    if (state.user) signOutUser();
+    else signInWithGoogle().catch(console.error);
+  });
+  document.getElementById("menu-lang-btn").addEventListener("click", switchLang);
 
   // Авторизация (Firebase). Подписка fires асинхронно — к этому моменту
   // loadFromStorage() уже выполнен, поэтому локальные данные пригодны для миграции.
@@ -756,6 +789,7 @@ async function init() {
       state.user = null;
     }
     renderAuthUI(state.user);
+    refreshMenuScreen();
   });
 
   getPlayAgainButton().addEventListener("click", goToStart);
@@ -782,7 +816,7 @@ async function init() {
   document.getElementById("regions-all").addEventListener("click", () => setAllRegions(true));
   document.getElementById("open-topics-btn").addEventListener("click", () => showScreen("topics"));
   document.getElementById("regions-next").addEventListener("click", () => showScreen("count"));
-  // #regions-back — заглушка (disabled), идти из Шага 1 пока некуда.
+  document.getElementById("regions-back").addEventListener("click", goToMenu);
 
   // Шаг 2 — темы
   document.getElementById("topics-clear").addEventListener("click", () => setAllTopicDifficulties(false));

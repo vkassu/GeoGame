@@ -9,9 +9,9 @@ export function showScreen(name) {
   for (const s of screens) {
     s.classList.toggle("active", s.id === `${name}-screen`);
   }
-  // Кнопка «На главную» видна на всех экранах, кроме стартового.
+  // Кнопка «На главную» видна на всех экранах, кроме меню и первого шага настройки.
   const home = getHomeButton();
-  if (home) home.hidden = name === "start";
+  if (home) home.hidden = (name === "start" || name === "menu");
 }
 
 export function getPlayAgainButton() {
@@ -247,6 +247,56 @@ export function showLevelUpBanner(newLevel, unlockLabels) {
 export function hideLevelUpBanner() {
   const banner = document.getElementById("level-up-banner");
   if (banner) banner.style.display = "none";
+}
+
+// ---- Главное меню (профиль) ----
+
+/**
+ * @param {Object} p
+ * @param {string|null} p.avatarUrl
+ * @param {string} p.username        — "Гость" если нет логина
+ * @param {number} p.level
+ * @param {Object} p.xpProgress      — { xpInLevel, xpNeeded, percent }
+ * @param {Object} p.inventory       — { hints, extraLives, chests }
+ * @param {boolean} p.isLoggedIn
+ * @param {string} p.lang            — "ru" или "en"
+ */
+export function renderMenuProfile({ avatarUrl, username, level,
+                                    xpProgress, inventory, isLoggedIn, lang }) {
+  // Аватар / иконка гостя
+  const avatar = document.getElementById("menu-avatar");
+  const guestIcon = document.getElementById("menu-guest-icon");
+  if (avatarUrl) {
+    avatar.src = avatarUrl;
+    avatar.style.display = "block";
+    guestIcon.style.display = "none";
+  } else {
+    avatar.style.display = "none";
+    guestIcon.style.display = "block";
+  }
+
+  // Имя и уровень
+  document.getElementById("menu-username").textContent = username;
+  document.getElementById("menu-level-badge").textContent = String(level);
+
+  // XP-бар
+  const { xpInLevel, xpNeeded, percent } = xpProgress;
+  document.getElementById("menu-xp-bar-fill").style.width =
+    (percent * 100).toFixed(1) + "%";
+  document.getElementById("menu-xp-caption").textContent =
+    xpInLevel + " / " + xpNeeded + " XP";
+
+  // Инвентарь
+  document.getElementById("menu-inv-hints").textContent = String(inventory.hints);
+  document.getElementById("menu-inv-lives").textContent = String(inventory.extraLives);
+  document.getElementById("menu-inv-chests").textContent = String(inventory.chests);
+
+  // Кнопка авторизации
+  document.getElementById("menu-auth-btn").textContent =
+    isLoggedIn ? t("menu.sign-out") : t("menu.sign-in");
+
+  // Кнопка языка
+  document.getElementById("menu-lang-btn").textContent = lang === "ru" ? "EN" : "RU";
 }
 
 export function renderQuestion({ prompt, options, questionNumber, total, questionText }) {

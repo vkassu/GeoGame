@@ -67,6 +67,12 @@ const STRINGS = {
     "inv.chests":     "Сундуки",
     "reset.progress": "Сбросить прогресс",
     "reset.confirm":  "Сбросить весь прогресс (опыт, рекорд, партии, выбор тем)? Это нельзя отменить.",
+    "menu.new-game":     "Новая игра",
+    "menu.encyclopedia": "Энциклопедия",
+    "menu.quests":       "Задания",
+    "menu.sign-in":      "Войти",
+    "menu.sign-out":     "Выйти",
+    "menu.guest":        "Гость",
   },
   en: {
     "status.loading": "Loading data from restcountries.com…",
@@ -128,6 +134,12 @@ const STRINGS = {
     "inv.chests":     "Chests",
     "reset.progress": "Reset progress",
     "reset.confirm":  "Reset all progress (XP, best, games, topic selection)? This cannot be undone.",
+    "menu.new-game":     "New Game",
+    "menu.encyclopedia": "Encyclopedia",
+    "menu.quests":       "Quests",
+    "menu.sign-in":      "Sign In",
+    "menu.sign-out":     "Sign Out",
+    "menu.guest":        "Guest",
   },
 };
 

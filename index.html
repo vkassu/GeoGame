@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260540">
+  <link rel="stylesheet" href="css/style.css?v=20260541">
 </head>
 <body>
   <header class="topbar">
@@ -15,8 +15,64 @@
   <div id="status">Загрузка данных с restcountries.com…</div>
 
   <main id="game">
-    <!-- Шаг 1: Регионы (стартовый экран) -->
-    <section id="start-screen" class="screen active">
+    <!-- Главное меню (первый экран) -->
+    <section id="menu-screen" class="screen active">
+      <!-- Блок профиля -->
+      <div class="menu-profile">
+        <!-- Строка 1: аватар + имя + уровень -->
+        <div class="menu-profile-top">
+          <img id="menu-avatar" class="menu-avatar" src="" alt="" width="40" height="40" style="display:none">
+          <div id="menu-guest-icon" class="menu-guest-icon">👤</div>
+          <span id="menu-username" class="menu-username">Гость</span>
+          <div class="menu-level-badge" id="menu-level-badge">1</div>
+        </div>
+
+        <!-- XP-бар -->
+        <div class="xp-bar-row menu-xp-row">
+          <div class="xp-bar-track">
+            <div class="xp-bar-fill" id="menu-xp-bar-fill"></div>
+          </div>
+        </div>
+        <p class="xp-bar-caption" id="menu-xp-caption"></p>
+
+        <!-- Инвентарь -->
+        <div class="menu-inventory">
+          <div class="menu-inv-item">
+            <span class="menu-inv-icon">❓</span>
+            <span class="menu-inv-count" id="menu-inv-hints">0</span>
+          </div>
+          <div class="menu-inv-item">
+            <span class="menu-inv-icon">❤️</span>
+            <span class="menu-inv-count" id="menu-inv-lives">0</span>
+          </div>
+          <div class="menu-inv-item">
+            <span class="menu-inv-icon">🧰</span>
+            <span class="menu-inv-count" id="menu-inv-chests">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Кнопки меню -->
+      <div class="menu-buttons">
+        <button type="button" class="menu-btn menu-btn-primary" id="menu-new-game-btn"
+                data-i18n="menu.new-game">Новая игра</button>
+
+        <div class="menu-btn-row">
+          <button type="button" class="menu-btn menu-btn-half" id="menu-encyclopedia-btn"
+                  data-i18n="menu.encyclopedia">Энциклопедия</button>
+          <button type="button" class="menu-btn menu-btn-half" id="menu-quests-btn"
+                  data-i18n="menu.quests">Задания</button>
+        </div>
+
+        <div class="menu-btn-row">
+          <button type="button" class="menu-btn menu-btn-half" id="menu-auth-btn"></button>
+          <button type="button" class="menu-btn menu-btn-half" id="menu-lang-btn"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Шаг 1: Регионы -->
+    <section id="start-screen" class="screen">
       <div class="setup-panel">
         <h2 class="setup-title" data-i18n="regions.title">Регионы</h2>
         <div class="region-grid" id="region-grid"></div>
@@ -60,7 +116,7 @@
       </div>
 
       <div class="setup-nav">
-        <button type="button" class="nav-btn" id="regions-back" data-i18n="regions.back" disabled>Назад</button>
+        <button type="button" class="nav-btn" id="regions-back" data-i18n="regions.back">Назад</button>
         <button type="button" class="nav-btn nav-btn-primary" id="regions-next" data-i18n="regions.next" disabled>Начало</button>
       </div>
     </section>
@@ -168,6 +224,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260540"></script>
+  <script type="module" src="js/main.js?v=20260541"></script>
 </body>
 </html>
