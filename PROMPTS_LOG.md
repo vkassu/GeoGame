@@ -18,6 +18,28 @@
 
 ---
 
+## 2026-05-25 #15 | Firebase Auth: аккаунты через Google + синхронизация XP
+
+**Цель:** авторизация через Google (Gmail); XP/рекорд/число партий привязываются к аккаунту и синхронизируются с Firestore. Без логина — гостевой режим (localStorage). Первый вход мигрирует гостевые данные в аккаунт.
+
+**Статус:** выполнен (код); требуются ручные шаги в Firebase Console — см. ниже
+
+**Проверено в браузере:** частично — гостевой путь и загрузка модулей проверены (preview :5500); **живой Google-логин/Firestore в preview не проверяются** (OAuth-попап, authorized domains, реальные правила).
+
+**Автор промпта:** Cowork
+
+**Промпт:** [сжато — полный текст в истории Cowork. Суть: Шаг 1 — `js/firebase.js` (CDN ES-модули 10.14.1, config geogame-b7f3e, `signInWithGoogle`/`signOutUser`/`onUserChanged`/`loadUserData`/`saveUserData`); Шаг 2 — main.js: импорты, `state.user`, `applyUserData`, `renderAuthUI`, подписка `onUserChanged` + слушатели кнопок в `init()`, сохранение в `endGame()` и `switchLang()`; Шаг 3 — `.auth-block` в `#start-screen`; Шаг 4 — CSS `.auth-*`; Шаг 5 — Firestore rules (вручную в Console); Шаг 6 — cache-busting + доки. apiKey — не секрет, безопасно коммитить. Не трогать игровую логику/ui/data/i18n/экраны кроме start-screen.]
+
+**Результат / расхождения:**
+- **Тронуты:** `js/firebase.js` (новый, дословно по промпту), `js/main.js` (импорт firebase; `state.user`; `applyUserData`/`renderAuthUI`; подписка+слушатели в `init()`; save в `endGame`/`switchLang`), `index.html` (`.auth-block` в `.setup-info` + cache-bust `20260533 → 20260534`), `css/style.css` (блок `.auth-*`), `CLAUDE.md` (раздел «Авторизация и облако», структура), `PROMPTS_LOG.md` (эта запись).
+- **Расхождение по размещению подписки (осознанно):** промпт просил `onUserChanged` «перед обращением к localStorage, но после регистрации DOM-слушателей» — это внутренне противоречиво, т.к. в текущем `init()` `loadFromStorage()` идёт **первой строкой**, до всех слушателей. Зарегистрировал подписку рядом с остальными слушателями (после `loadFromStorage`). Функционально корректно: колбэк `onAuthStateChanged` асинхронный (fires после раунд-трипа Firebase), к этому моменту `state` уже загружен из localStorage — `localFallback` для миграции валиден.
+- **Шаг 5 (правила Firestore) — НЕ выполнен кодом, требует ручного действия Алексея** в console.firebase.google.com → проект `geogame-b7f3e`: (1) Firestore → Rules → вставить правило `users/{userId}` `allow read,write: if request.auth.uid == userId` → Опубликовать; (2) Authentication → Sign-in method → включить Google; (3) Authentication → Settings → Authorized domains → добавить `vkassu.github.io` (и `localhost` для локальных тестов). Без (1) — дыра в безопасности; без (2)/(3) — попап входа не отработает.
+- **Проверено в preview (что доступно):** все 3 Firebase-модуля с gstatic CDN + `firebase.js` грузятся 200; `initializeApp` без ошибок; `onAuthStateChanged` отдал `null` → гостевой режим, кнопка «Войти через Google» видна (`display:flex`), блок `#auth-info` скрыт; игра грузится штатно (250 стран, 733 вопроса), фон-оригинал Земли 200. Консоль чистая.
+- **Что НЕ проверено (вне возможностей preview):** реальный Google Sign-In попап, чтение/запись Firestore, миграция гостевых данных. Требуют деплоя + завершения Шага 5 и проверки Алексеем вживую на https://vkassu.github.io/GeoGame/ .
+- **Известное ограничение (не баг):** `applyUserData` намеренно НЕ применяет `lang` из облака к UI (только xp/best/games) — строго по промпту. Локальные ES-модули (`firebase.js`, `bg.js`) импортируются без `?v=`, т.е. не покрыты cache-busting (версионируются только `main.js`/`style.css` в index.html) — следует общей конвенции проекта; для firebase.js некритично (новый файл, кеша нет).
+
+---
+
 ## 2026-05-25 #14 | Качественный фон Земли: удалённый источник + локальный fallback
 
 **Цель:** умная загрузка фона — пробовать высококачественное фото Земли из интернета, при ошибке/офлайн остаётся локальный файл. Заодно заменить плоский `earth.jpg` на настоящую сферу.

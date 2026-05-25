@@ -48,6 +48,8 @@ import {
   setNavButtonEnabled,
 } from "./ui.js";
 import { initEarthBackground } from "./bg.js";
+import { onUserChanged, signInWithGoogle, signOutUser,
+         loadUserData, saveUserData } from "./firebase.js";
 
 const OPTIONS_PER_QUESTION = 4;
 const QUESTION_TIME_SEC = 30;
@@ -152,6 +154,7 @@ const STORAGE = {
 const state = {
   screen: "start",
   lang: "ru",
+  user: null,              // { uid, name, photo } или null (гость)
   gamesPlayed: 0,
   allCountries: [],
   regionPool: [],          // страны под текущие регионы (заполняется в startGame, для дистракторов)
@@ -473,6 +476,14 @@ function endGame() {
   renderXpTotal(state.xpTotal);
   renderBestXp(state.bestXpPerGame);
   showScreen(state.screen);
+
+  if (state.user) {
+    saveUserData(state.user.uid, {
+      xpTotal:      state.xpTotal,
+      bestXpPerGame: state.bestXpPerGame,
+      gamesPlayed:  state.gamesPlayed,
+    }).catch(console.error);
+  }
 }
 
 function goToStart() {
@@ -500,6 +511,44 @@ function switchLang() {
   applyI18n();
   renderStatus();
   refreshSetupUI();
+  if (state.user) {
+    saveUserData(state.user.uid, { lang: next }).catch(console.error);
+  }
+}
+
+// ---------- авторизация (Firebase) ----------
+
+// Применить данные из Firestore к state и localStorage.
+function applyUserData(data) {
+  state.xpTotal       = data.xpTotal       ?? state.xpTotal;
+  state.bestXpPerGame = data.bestXpPerGame  ?? state.bestXpPerGame;
+  state.gamesPlayed   = data.gamesPlayed    ?? state.gamesPlayed;
+  // Обновить localStorage чтобы совпадал с облаком
+  localStorage.setItem(STORAGE.xpTotal,      String(state.xpTotal));
+  localStorage.setItem(STORAGE.bestXpPerGame, String(state.bestXpPerGame));
+  localStorage.setItem(STORAGE.gamesPlayed,   String(state.gamesPlayed));
+  // Обновить UI
+  renderXpTotal(state.xpTotal);
+  renderBestXp(state.bestXpPerGame);
+  renderGamesPlayed(state.gamesPlayed);
+}
+
+// Обновить блок авторизации на стартовом экране.
+function renderAuthUI(user) {
+  const btn   = document.getElementById("auth-btn");
+  const info  = document.getElementById("auth-info");
+  const avatar = document.getElementById("auth-avatar");
+  const name   = document.getElementById("auth-name");
+  if (!btn || !info) return;
+  if (user) {
+    btn.style.display  = "none";
+    info.style.display = "flex";
+    if (avatar) avatar.src = user.photo || "";
+    if (name)   name.textContent = user.name || "";
+  } else {
+    btn.style.display  = "flex";
+    info.style.display = "none";
+  }
 }
 
 function updateLangButton() {
@@ -529,6 +578,37 @@ async function init() {
   refreshSetupUI();
 
   document.getElementById("lang-btn").addEventListener("click", switchLang);
+
+  // Авторизация (Firebase). Подписка fires асинхронно — к этому моменту
+  // loadFromStorage() уже выполнен, поэтому локальные данные пригодны для миграции.
+  document.getElementById("auth-btn")
+    ?.addEventListener("click", () => signInWithGoogle().catch(console.error));
+  document.getElementById("auth-signout")
+    ?.addEventListener("click", () => signOutUser());
+  onUserChanged(async (firebaseUser) => {
+    if (firebaseUser) {
+      state.user = {
+        uid:   firebaseUser.uid,
+        name:  firebaseUser.displayName,
+        photo: firebaseUser.photoURL,
+      };
+      try {
+        const data = await loadUserData(state.user.uid, {
+          xpTotal:      state.xpTotal,
+          bestXpPerGame: state.bestXpPerGame,
+          gamesPlayed:  state.gamesPlayed,
+          lang:         getLang(),
+        });
+        applyUserData(data);
+      } catch (e) {
+        console.warn("Firestore load failed, using local data:", e);
+      }
+    } else {
+      state.user = null;
+    }
+    renderAuthUI(state.user);
+  });
+
   getPlayAgainButton().addEventListener("click", goToStart);
   getHomeButton().addEventListener("click", goHome);
   getHintButton().addEventListener("click", handleHintClick);
