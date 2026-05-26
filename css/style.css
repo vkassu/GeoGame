@@ -312,7 +312,10 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 
 .hint-btn {
-  padding: 6px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
   background: linear-gradient(to bottom, #4fc3f7, #0288d1);
   border: 2px solid #b0bec5;
   border-radius: 12px;
@@ -323,15 +326,27 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   min-height: auto;
   cursor: pointer;
   font-family: inherit;
-  transition: filter .15s, transform .1s;
+  transition: filter .15s, transform .1s, background .15s, border-color .15s;
 }
 .hint-btn:hover:not(:disabled) { filter: brightness(1.15); }
 .hint-btn:active:not(:disabled) { transform: scale(0.97); }
+/* Заряжается: серая кнопка, но зелёные сегменты прогресса остаются видимыми (не grayscale). */
 .hint-btn:disabled {
-  filter: grayscale(1);
-  opacity: 0.45;
+  background: #e3e8ee;
+  border-color: #cdd5df;
+  color: #90a4ae;
+  box-shadow: none;
   cursor: not-allowed;
 }
+/* 5 сегментов перезарядки подсказки */
+.hint-progress { display: inline-flex; gap: 3px; }
+.hint-seg {
+  width: 7px;
+  height: 12px;
+  border-radius: 2px;
+  background: rgba(0,0,0,0.18);
+}
+.hint-seg.filled { background: #4caf50; }
 
 .q-timer {
   font-weight: bold;
@@ -837,6 +852,13 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .menu-btn-primary:hover { border-color: #b0bec5; background: linear-gradient(to bottom, #4fc3f7, #0288d1); filter: brightness(1.1); }
 .menu-btn-row { display: flex; gap: 10px; }
 .menu-btn-half { flex: 1; }
+.menu-btn:disabled { filter: grayscale(0.6); opacity: 0.55; cursor: not-allowed; }
+/* Кнопка «Память» — две строки (название + подсказка про сундуки) */
+.menu-btn-memory { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.menu-memory-sub { font-size: 12px; font-weight: 600; opacity: 0.9; }
+
+/* В режиме обучения шапка (.meta: таймер + подсказка + счётчик) не нужна */
+#game-screen.training-mode .meta { display: none; }
 
 /* === Экран «Обучение» (Работа над ошибками) === */
 .training-subtitle {
@@ -900,19 +922,26 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   margin: 12px 0 16px;
 }
 .bonus-cell {
-  aspect-ratio: 1 / 1;
+  /* padding-hack для квадратной формы (aspect-ratio не поддерживается на iOS Safari < 15.4) */
+  position: relative;
+  height: 0;
+  padding-top: 100%;
   border: 2px solid #b0bec5;
   border-radius: 10px;
   background: #fff;
   cursor: pointer;
   overflow: hidden;
+  transition: filter .15s, transform .1s, border-color .15s;
+}
+/* Внутренний контент заполняет квадрат абсолютным позиционированием */
+.bonus-cell-inner {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
-  transition: filter .15s, transform .1s, border-color .15s;
-  padding: 0;
+  overflow: hidden;
 }
 .bonus-cell:hover:not(:disabled):not(.bonus-cell-revealed) { filter: brightness(1.05); transform: scale(1.03); }
 .bonus-cell:active:not(:disabled):not(.bonus-cell-revealed) { transform: scale(0.97); }

@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js";
-import { t } from "./i18n.js?v=20260546";
+import { codeToEmoji, officialName } from "./data.js?v=20260547";
+import { t } from "./i18n.js?v=20260547";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -30,8 +30,16 @@ export function getHintButton() {
   return document.getElementById("hint-btn");
 }
 
-export function setHintButtonState(enabled) {
-  getHintButton().disabled = !enabled;
+// Подсказка с перезарядкой: 5 сегментов, заполненных по hintCharge (или все 5 если доступна).
+// Кнопка активна только когда hintAvailable.
+export function updateHintUI(hintCharge, hintAvailable) {
+  const btn = getHintButton();
+  if (!btn) return;
+  btn.style.display = "";
+  const segs = btn.querySelectorAll(".hint-seg");
+  const filled = hintAvailable ? segs.length : hintCharge;
+  segs.forEach((s, i) => s.classList.toggle("filled", i < filled));
+  btn.disabled = !hintAvailable;
 }
 
 // Прячет 2 случайных неверных варианта из 4 (через visibility, чтобы сетка 2×2 не схлопнулась).
@@ -289,10 +297,17 @@ export function renderMenuProfile({ avatarUrl, username, level,
   document.getElementById("menu-xp-caption").textContent =
     xpInLevel + " / " + xpNeeded + " XP";
 
-  // Инвентарь
-  document.getElementById("menu-inv-hints").textContent = String(inventory.hints);
-  document.getElementById("menu-inv-lives").textContent = String(inventory.extraLives);
+  // Инвентарь (только сундуки)
   document.getElementById("menu-inv-chests").textContent = String(inventory.chests);
+
+  // Кнопка «Память» — доступна при 100+ сундуках, иначе серая с подсказкой «нужно 100».
+  const memBtn = document.getElementById("menu-memory-btn");
+  const memSub = document.getElementById("menu-memory-sub");
+  if (memBtn) {
+    const unlocked = inventory.chests >= 100;
+    memBtn.disabled = !unlocked;
+    if (memSub) memSub.style.display = unlocked ? "none" : "";
+  }
 
   // Кнопка авторизации
   document.getElementById("menu-auth-btn").textContent =
@@ -474,8 +489,9 @@ export function renderResult(score, total) {
 /**
  * Рендерит состояние экрана training.
  * @param {number} remaining — сколько ошибок ещё не закрыто (0..N)
+ * @param {boolean} hadErrors — были ли ошибки в этой партии вообще
  */
-export function renderTrainingScreen(remaining) {
+export function renderTrainingScreen(remaining, hadErrors) {
   const titleEl    = document.getElementById("training-title");
   const subtitleEl = document.getElementById("training-subtitle");
   const startBtn   = document.getElementById("training-start-btn");
@@ -483,10 +499,21 @@ export function renderTrainingScreen(remaining) {
   const skipBtn    = document.getElementById("training-skip-btn");
   const remEl      = document.getElementById("training-remaining");
 
+  // Партия без единой ошибки — отдельный заголовок, Обучение сразу недоступно, Бонус активен.
+  if (!hadErrors) {
+    titleEl.textContent = t("training.no-errors");
+    subtitleEl.textContent = "";
+    startBtn.disabled = true;
+    remEl.textContent = "";
+    bonusBtn.disabled = false;
+    skipBtn.style.display = "none";
+    return;
+  }
+
   titleEl.textContent = t("training.title");
 
   if (remaining === 0) {
-    // Все ошибки исправлены (или их и не было): «Обучение завершено!», Бонус активен.
+    // Все ошибки исправлены в обучении: «Обучение завершено!», Бонус активен.
     subtitleEl.textContent = t("training.done");
     startBtn.disabled = true;
     remEl.textContent = "";
@@ -522,6 +549,9 @@ export function renderBonusGrid(cells, onPick) {
     btn.className = "bonus-cell bonus-cell-closed";
     btn.dataset.index = String(index);
 
+    const inner = document.createElement("span");
+    inner.className = "bonus-cell-inner";
+
     const flag = document.createElement("span");
     flag.className = "bonus-cell-flag";
     if (cell.flagSrcs && cell.flagSrcs.length) {
@@ -538,7 +568,8 @@ export function renderBonusGrid(cells, onPick) {
     } else {
       flag.textContent = "🏳";
     }
-    btn.appendChild(flag);
+    inner.appendChild(flag);
+    btn.appendChild(inner);
 
     btn.addEventListener("click", () => onPick(index));
     grid.appendChild(btn);
@@ -574,7 +605,7 @@ export function revealBonusGrid(cells, pickedIndex, pickedCountryName, pickedPri
       ? formatXpShort(prize.amount)
       : String(prize.amount);
     prizeEl.append(iconEl, valEl);
-    btn.appendChild(prizeEl);
+    (btn.querySelector(".bonus-cell-inner") || btn).appendChild(prizeEl);
   });
 
   document.getElementById("bonus-hint").style.display = "none";
@@ -588,9 +619,7 @@ export function revealBonusGrid(cells, pickedIndex, pickedCountryName, pickedPri
 function prizeIcon(type) {
   switch (type) {
     case "xp":    return "✨";
-    case "hint":  return "❓";
     case "chest": return "🧰";
-    case "life":  return "❤️";
     default:      return "?";
   }
 }

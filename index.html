@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260546">
+  <link rel="stylesheet" href="css/style.css?v=20260547">
 </head>
 <body>
   <header class="topbar">
@@ -35,16 +35,8 @@
         </div>
         <p class="xp-bar-caption" id="menu-xp-caption"></p>
 
-        <!-- Инвентарь -->
+        <!-- Инвентарь (только сундуки) -->
         <div class="menu-inventory">
-          <div class="menu-inv-item">
-            <span class="menu-inv-icon">❓</span>
-            <span class="menu-inv-count" id="menu-inv-hints">0</span>
-          </div>
-          <div class="menu-inv-item">
-            <span class="menu-inv-icon">❤️</span>
-            <span class="menu-inv-count" id="menu-inv-lives">0</span>
-          </div>
           <div class="menu-inv-item">
             <span class="menu-inv-icon">🧰</span>
             <span class="menu-inv-count" id="menu-inv-chests">0</span>
@@ -56,6 +48,11 @@
       <div class="menu-buttons">
         <button type="button" class="menu-btn menu-btn-primary" id="menu-new-game-btn"
                 data-i18n="menu.new-game">Новая игра</button>
+
+        <button type="button" class="menu-btn menu-btn-primary menu-btn-memory" id="menu-memory-btn" disabled>
+          <span class="menu-memory-main" data-i18n="menu.memory">🧠 Сыграть в Память!</span>
+          <span class="menu-memory-sub" id="menu-memory-sub" data-i18n="menu.memory.locked">Нужно 100 сундуков</span>
+        </button>
 
         <div class="menu-btn-row">
           <button type="button" class="menu-btn menu-btn-half" id="menu-encyclopedia-btn"
@@ -153,7 +150,12 @@
     <section id="game-screen" class="screen">
       <div class="meta">
         <span id="q-timer" class="q-timer">⏱ 30</span>
-        <button id="hint-btn" class="hint-btn" type="button" data-i18n="game.hint">Подсказка</button>
+        <button id="hint-btn" class="hint-btn" type="button">
+          <span class="hint-label" data-i18n="game.hint">Подсказка</span>
+          <span class="hint-progress" id="hint-progress">
+            <span class="hint-seg"></span><span class="hint-seg"></span><span class="hint-seg"></span><span class="hint-seg"></span><span class="hint-seg"></span>
+          </span>
+        </button>
         <span id="q-counter">Вопрос 1 из 10</span>
       </div>
       <div class="progress" aria-hidden="true">
@@ -262,6 +264,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260546"></script>
+  <script type="module" src="js/main.js?v=20260547"></script>
 </body>
 </html>

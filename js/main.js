@@ -14,7 +14,7 @@ import {
   getCapital,
   getPopulationFormatted,
   getAreaFormatted,
-} from "./data.js";
+} from "./data.js?v=20260547";
 import {
   getLang,
   setLang,
@@ -23,13 +23,13 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260546";
+} from "./i18n.js?v=20260547";
 import {
   showScreen,
   getPlayAgainButton,
   getHomeButton,
   getHintButton,
-  setHintButtonState,
+  updateHintUI,
   applyHintToOptions,
   renderAnswerResult,
   showAnswerResult,
@@ -55,7 +55,7 @@ import {
   renderTrainingScreen,
   renderBonusGrid,
   revealBonusGrid,
-} from "./ui.js?v=20260546";
+} from "./ui.js?v=20260547";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
@@ -164,7 +164,7 @@ const DEFAULT_TOPIC_DIFFICULTIES = Object.fromEntries(
   Object.keys(TOPICS).map((k) => [k, -1])
 );
 const DEFAULT_QUESTION_COUNT = 10;
-const DEFAULT_INVENTORY = { hints: 0, extraLives: 0, chests: 0 };
+const DEFAULT_INVENTORY = { chests: 0 };
 
 const STORAGE = {
   gamesPlayed: "geogame:gamesPlayed",
@@ -189,14 +189,19 @@ const state = {
   score: 0,
   isGameOver: false,
   timerId: null,
-  hintUsed: false,
+  // Подсказка с перезарядкой: hintCharge — сколько правильных ПОДРЯД (0..5);
+  // при 5 → hintAvailable=true и hintCharge сбрасывается; неверный/таймаут → hintCharge=0.
+  hintCharge: 0,
+  hintAvailable: false,
   currentButtons: [],
   currentCorrect: "",
   xpTotal: 0,
   xpEarnedThisGame: 0,
   bestXpPerGame: 0,
-  inventory: { ...DEFAULT_INVENTORY }, // { hints, extraLives, chests }
+  inventory: { ...DEFAULT_INVENTORY }, // { chests }
   dataLoaded: false,
+  // Были ли в этой партии ошибки (для текста экрана «Обучение»: «Нет ошибок» vs «Завершено»).
+  sessionHadErrors: false,
   // Ошибки сессии для последующего экрана «Обучение»: { country, topicKey, difficultyIndex, pickedValue }.
   // Очищается в startGame, наполняется в handleAnswer/таймауте, потребляется в startTraining.
   wrongAnswers: [],
@@ -229,11 +234,8 @@ function loadFromStorage() {
   try {
     const inv = JSON.parse(localStorage.getItem(STORAGE.inventory) || "null");
     if (inv && typeof inv === "object") {
-      state.inventory = {
-        hints: Number(inv.hints) || 0,
-        extraLives: Number(inv.extraLives) || 0,
-        chests: Number(inv.chests) || 0,
-      };
+      // Берём только chests; устаревшие hints/extraLives игнорируем.
+      state.inventory = { chests: Number(inv.chests) || 0 };
     }
   } catch (_) {}
 
@@ -422,10 +424,12 @@ function startGame() {
   state.score = 0;
   state.xpEarnedThisGame = 0;
   state.isGameOver = false;
-  state.hintUsed = false;
+  state.hintCharge = 0;
+  state.hintAvailable = false;
   state.currentButtons = [];
   state.currentCorrect = "";
   state.wrongAnswers = [];
+  state.sessionHadErrors = false;
   state.isTraining = false;
   state.trainingQueue = [];
   state.trainingCurrent = null;
@@ -450,6 +454,7 @@ function startTimer() {
       // Время вышло — неверный ответ (ни одна кнопка не совпадёт с правильным).
       const q = state.questions[state.currentQuestion];
       const correct = TOPICS[q.topicKey].answer(q.country);
+      state.hintCharge = 0; // серия правильных прервана
       // Запоминаем ошибку для будущего экрана «Обучение» (только в обычной партии).
       if (!state.isTraining) {
         state.wrongAnswers.push({
@@ -501,38 +506,49 @@ function showQuestion(index) {
 
   const hintBtn = getHintButton();
   if (hintBtn) hintBtn.style.display = ""; // обычная партия — подсказка видна
-  setHintButtonState(!state.hintUsed);
+  updateHintUI(state.hintCharge, state.hintAvailable);
 }
 
 function handleHintClick() {
-  if (state.hintUsed) return;
-  state.hintUsed = true;
+  if (!state.hintAvailable) return;
   applyHintToOptions(state.currentButtons, state.currentCorrect);
-  setHintButtonState(false);
+  // Подсказка использована — следующий цикл с нуля.
+  state.hintAvailable = false;
+  state.hintCharge = 0;
+  updateHintUI(state.hintCharge, state.hintAvailable);
 }
 
 function handleAnswer(picked, allButtons, correct) {
   clearTimer();
-  setHintButtonState(false);
   const isCorrect = picked.value === correct;
   if (isCorrect) {
     state.score++;
+    // Перезарядка подсказки: 5 правильных подряд → подсказка доступна.
+    state.hintCharge++;
+    if (state.hintCharge >= 5) {
+      state.hintAvailable = true;
+      state.hintCharge = 0;
+    }
     // XP начисляется только в обычной партии. В обучении — нет.
     if (!state.isTraining) {
       state.xpTotal += XP_PER_CORRECT;
       state.xpEarnedThisGame += XP_PER_CORRECT;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
     }
-  } else if (!state.isTraining) {
-    // Запоминаем ошибку для будущего экрана «Обучение» (только в обычной партии).
-    const q = state.questions[state.currentQuestion];
-    state.wrongAnswers.push({
-      country: q.country,
-      topicKey: q.topicKey,
-      difficultyIndex: q.difficultyIndex,
-      pickedValue: picked.value,
-    });
+  } else {
+    state.hintCharge = 0; // серия прервана
+    if (!state.isTraining) {
+      // Запоминаем ошибку для будущего экрана «Обучение» (только в обычной партии).
+      const q = state.questions[state.currentQuestion];
+      state.wrongAnswers.push({
+        country: q.country,
+        topicKey: q.topicKey,
+        difficultyIndex: q.difficultyIndex,
+        pickedValue: picked.value,
+      });
+    }
   }
+  updateHintUI(state.hintCharge, state.hintAvailable);
 
   for (const { button } of allButtons) {
     button.disabled = true;
@@ -572,9 +588,11 @@ function getRegionLabel(country) {
 
 // Открыть карточку страны текущего вопроса (кнопка «Информация» на экране ответа).
 function showInfo() {
-  const q = state.questions[state.currentQuestion];
-  if (!q) return;
-  const country = q.country;
+  // В обучении актуальна trainingCurrent.country, а не state.questions[...].
+  const country = state.isTraining
+    ? state.trainingCurrent?.country
+    : state.questions[state.currentQuestion]?.country;
+  if (!country) return;
 
   // Вычисленные (lang-aware) значения как временные поля — UI-слой их только читает.
   country._displayName = getName(country);
@@ -598,6 +616,8 @@ function goBackFromInfo() {
 function endGame() {
   clearTimer();
   state.isGameOver = true;
+  // Зафиксировать, были ли ошибки (для текста экрана «Обучение»; wrongAnswers потом убывает в тренировке).
+  state.sessionHadErrors = state.wrongAnswers.length > 0;
 
   state.gamesPlayed += 1;
   localStorage.setItem(STORAGE.gamesPlayed, String(state.gamesPlayed));
@@ -658,7 +678,8 @@ function goToStart() {
 function goToTraining() {
   state.screen = "training";
   state.isTraining = false; // на training-screen не идёт активная партия
-  renderTrainingScreen(state.wrongAnswers.length);
+  document.getElementById("game-screen")?.classList.remove("training-mode");
+  renderTrainingScreen(state.wrongAnswers.length, state.sessionHadErrors);
   showScreen(state.screen);
 }
 
@@ -669,8 +690,8 @@ function startTraining() {
   // Очередь — копии записей. Правильно отвеченные выбывают, неправильные остаются.
   state.trainingQueue = state.wrongAnswers.slice();
   state.score = 0;
-  state.hintUsed = true; // в обучении подсказка недоступна
-  setHintButtonState(false);
+  // В обучении нет таймера/подсказки — скрываем всю .meta через класс.
+  document.getElementById("game-screen")?.classList.add("training-mode");
   state.screen = "game";
   showScreen(state.screen);
   showTrainingQuestion();
@@ -711,14 +732,8 @@ function showTrainingQuestion() {
       handleTrainingAnswer(ent, buttons, correct);
     });
   }
-
-  // В обучении подсказка не нужна — скрываем кнопку целиком (не просто disable).
-  const hintBtn = getHintButton();
-  if (hintBtn) hintBtn.style.display = "none";
-  setHintButtonState(false);
-  // Таймер тоже скрываем — обучение не на время.
-  const timerEl = document.getElementById("q-timer");
-  if (timerEl) timerEl.textContent = "";
+  // Подсказка и таймер в обучении не нужны — вся .meta скрыта классом
+  // .training-mode на #game-screen (см. startTraining), отдельно прятать не надо.
 }
 
 // Варианты для обучения: правильный + прежний неправильный (как напоминание) + случайные.
@@ -793,38 +808,36 @@ function finishTraining() {
   state.isTraining = false;
   state.trainingQueue = [];
   state.trainingCurrent = null;
+  document.getElementById("game-screen")?.classList.remove("training-mode");
   goToTraining(); // обратно на training-screen — теперь с активным «Бонус»
 }
 
 // Игрок пропустил обучение → в меню, бонуса нет.
 function skipTraining() {
   state.isTraining = false;
+  document.getElementById("game-screen")?.classList.remove("training-mode");
   goToMenu();
 }
 
 // ---------- Бонус ----------
 
 const BONUS_GRID_SIZE = 25;
-// Распределение призов: 12 XP / 6 подсказок / 4 сундука / 3 жизни.
+// Распределение призов: 20 XP / 5 сундуков.
 const BONUS_PRIZE_POOL = [
-  ...Array(12).fill("xp"),
-  ...Array(6).fill("hint"),
-  ...Array(4).fill("chest"),
-  ...Array(3).fill("life"),
+  ...Array(20).fill("xp"),
+  ...Array(5).fill("chest"),
 ];
 
-// Генерируем приз заданного типа. XP — 25..200% от sessionXP (минимум 25 XP).
+// Генерируем приз заданного типа. XP — 25..200% от sessionXP (минимум 25 XP); сундук — 1..3 шт.
 function generatePrize(type, sessionXp) {
-  if (type === "xp") {
-    const base = Math.max(sessionXp, 50); // если сессия пустая — даём хоть что-то
-    const pct = 0.25 + Math.random() * 1.75; // 0.25..2.0
-    const amount = Math.max(25, Math.round((base * pct) / 5) * 5); // округляем до 5
-    return { type: "xp", amount };
+  if (type === "chest") {
+    return { type: "chest", amount: 1 + Math.floor(Math.random() * 3) }; // 1..3
   }
-  if (type === "hint")  return { type: "hint",  amount: 1 + Math.floor(Math.random() * 3) };  // 1..3
-  if (type === "chest") return { type: "chest", amount: 1 + Math.floor(Math.random() * 2) };  // 1..2
-  if (type === "life")  return { type: "life",  amount: 1 };
-  return { type: "xp", amount: 25 };
+  // По умолчанию — XP.
+  const base = Math.max(sessionXp, 50); // если сессия пустая — даём хоть что-то
+  const pct = 0.25 + Math.random() * 1.75; // 0.25..2.0
+  const amount = Math.max(25, Math.round((base * pct) / 5) * 5); // округляем до 5
+  return { type: "xp", amount };
 }
 
 function startBonus() {
@@ -863,9 +876,7 @@ function onBonusCellPicked(index) {
 function formatPrize(prize) {
   switch (prize.type) {
     case "xp":    return t("bonus.prize.xp",    { n: prize.amount });
-    case "hint":  return t("bonus.prize.hint",  { n: prize.amount });
     case "chest": return t("bonus.prize.chest", { n: prize.amount });
-    case "life":  return t("bonus.prize.life",  { n: prize.amount });
     default:      return "?";
   }
 }
@@ -877,12 +888,8 @@ function finishBonus() {
     if (prize.type === "xp") {
       state.xpTotal += prize.amount;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
-    } else if (prize.type === "hint") {
-      state.inventory.hints += prize.amount;
     } else if (prize.type === "chest") {
       state.inventory.chests += prize.amount;
-    } else if (prize.type === "life") {
-      state.inventory.extraLives += prize.amount;
     }
     localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory));
 
@@ -946,11 +953,7 @@ function applyUserData(data) {
   state.bestXpPerGame = data.bestXpPerGame  ?? state.bestXpPerGame;
   state.gamesPlayed   = data.gamesPlayed    ?? state.gamesPlayed;
   if (data.inventory && typeof data.inventory === "object") {
-    state.inventory = {
-      hints: Number(data.inventory.hints) || 0,
-      extraLives: Number(data.inventory.extraLives) || 0,
-      chests: Number(data.inventory.chests) || 0,
-    };
+    state.inventory = { chests: Number(data.inventory.chests) || 0 };
   }
   // Обновить localStorage чтобы совпадал с облаком
   localStorage.setItem(STORAGE.xpTotal,      String(state.xpTotal));
@@ -1050,6 +1053,7 @@ async function init() {
   document.getElementById("menu-new-game-btn").addEventListener("click", goToStart);
   document.getElementById("menu-encyclopedia-btn").addEventListener("click", () => console.log("Энциклопедия: не реализовано"));
   document.getElementById("menu-quests-btn").addEventListener("click", () => console.log("Задания: не реализовано"));
+  document.getElementById("menu-memory-btn")?.addEventListener("click", () => console.log("Memory game: coming soon"));
   document.getElementById("menu-auth-btn").addEventListener("click", () => {
     if (state.user) signOutUser();
     else signInWithGoogle().catch(console.error);
