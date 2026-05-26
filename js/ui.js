@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260549";
-import { t } from "./i18n.js?v=20260549";
+import { codeToEmoji, officialName } from "./data.js?v=20260550";
+import { t } from "./i18n.js?v=20260550";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -317,6 +317,28 @@ export function renderMenuProfile({ avatarUrl, username, level,
   document.getElementById("menu-lang-btn").textContent = lang === "ru" ? "EN" : "RU";
 }
 
+// Локальная картинка флага/герба с фолбэком svg → png → запасной узел.
+// dir: "flags" | "coats". onExhausted(img) — когда ни svg, ни png не загрузились.
+// Файлы лежат в репо (scripts/download_assets.js), внешних CDN-запросов нет.
+function localAssetImg(dir, cca2, className, onExhausted) {
+  const code = (cca2 || "").toLowerCase();
+  const img = document.createElement("img");
+  if (className) img.className = className;
+  img.alt = cca2 || "";
+  let stage = 0;
+  img.onerror = () => {
+    stage++;
+    if (stage === 1) {
+      img.src = `./img/${dir}/${code}.png`; // svg не нашёлся — пробуем png
+    } else {
+      img.onerror = null;
+      onExhausted(img);
+    }
+  };
+  img.src = `./img/${dir}/${code}.svg`;
+  return img;
+}
+
 export function renderQuestion({ prompt, options, questionNumber, total, questionText }) {
   if (questionText) {
     document.querySelector(".question-text").textContent = questionText;
@@ -330,51 +352,11 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
   } else if (prompt.type === "coa") {
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;
-    const coa = country.coatOfArms || {};
-    const sources = [coa.svg, coa.png].filter(Boolean);
-    if (sources.length) {
-      const img = document.createElement("img");
-      img.className = "coa-img";
-      img.alt = country.cca2 || "";
-      let i = 0;
-      img.onerror = () => {
-        i++;
-        if (i < sources.length) {
-          img.src = sources[i];
-        } else {
-          img.onerror = null;
-          flagEl.textContent = "🏛";
-        }
-      };
-      img.src = sources[0];
-      flagEl.appendChild(img);
-    } else {
-      flagEl.textContent = "🏛";
-    }
+    flagEl.appendChild(localAssetImg("coats", country.cca2, "coa-img", () => { flagEl.textContent = "🏛"; }));
   } else {
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;
-    const flags = country.flags || {};
-    const sources = [flags.svg, flags.png].filter(Boolean);
-    if (sources.length) {
-      const img = document.createElement("img");
-      img.alt = country.cca2 || "";
-      let i = 0;
-      // Фолбэк при ошибке загрузки: svg → png → эмодзи (чтобы не оставалась битая картинка).
-      img.onerror = () => {
-        i++;
-        if (i < sources.length) {
-          img.src = sources[i];
-        } else {
-          img.onerror = null;
-          flagEl.textContent = codeToEmoji(country.cca2);
-        }
-      };
-      img.src = sources[0];
-      flagEl.appendChild(img);
-    } else {
-      flagEl.textContent = codeToEmoji(country.cca2);
-    }
+    flagEl.appendChild(localAssetImg("flags", country.cca2, "", () => { flagEl.textContent = codeToEmoji(country.cca2); }));
   }
 
   document.getElementById("q-counter").textContent = t("game.counter", { i: questionNumber, n: total });
@@ -400,25 +382,10 @@ export function markAnswer(btn, kind) {
 // Экран «Информация» о стране. Значения берутся из временных полей country._*,
 // которые main.js вычисляет (lang-aware) перед вызовом — UI-слой не дёргает бизнес-логику.
 export function renderInfoScreen(country, regionLabel) {
-  // --- Флаг ---
+  // --- Флаг (локальный) ---
   const flagEl = document.getElementById("info-flag");
   flagEl.innerHTML = "";
-  const flags = country.flags || {};
-  const sources = [flags.svg, flags.png].filter(Boolean);
-  if (sources.length) {
-    const img = document.createElement("img");
-    img.alt = country.cca2 || "";
-    let i = 0;
-    img.onerror = () => {
-      i++;
-      if (i < sources.length) { img.src = sources[i]; }
-      else { img.onerror = null; flagEl.textContent = codeToEmoji(country.cca2); }
-    };
-    img.src = sources[0];
-    flagEl.appendChild(img);
-  } else {
-    flagEl.textContent = codeToEmoji(country.cca2);
-  }
+  flagEl.appendChild(localAssetImg("flags", country.cca2, "", () => { flagEl.textContent = codeToEmoji(country.cca2); }));
 
   // --- Имена ---
   document.getElementById("info-name").textContent =
@@ -454,26 +421,15 @@ export function renderInfoScreen(country, regionLabel) {
   addRow("info.currency",   country._currency  || "—");
   if (country._nativeName) addRow("info.native", country._nativeName);
 
-  // --- Герб ---
+  // --- Герб (локальный; наличие проверяем по URL-справочнику из countries.json) ---
   const coaBlock = document.getElementById("info-coa-block");
   const coaImg   = document.getElementById("info-coa-img");
-  const coa = country.coatOfArms || {};
-  const coaSrcs = [coa.svg, coa.png].filter(Boolean);
-  if (coaSrcs.length) {
+  const hasCoa = !!(country.coatOfArms && country.coatOfArms.svg);
+  if (hasCoa) {
     coaBlock.style.display = "";
     document.querySelector("[data-i18n='info.coa']").textContent = t("info.coa");
     coaImg.innerHTML = "";
-    const img = document.createElement("img");
-    img.className = "coa-img";
-    img.alt = "";
-    let i = 0;
-    img.onerror = () => {
-      i++;
-      if (i < coaSrcs.length) { img.src = coaSrcs[i]; }
-      else { img.onerror = null; coaImg.textContent = "🏛"; }
-    };
-    img.src = coaSrcs[0];
-    coaImg.appendChild(img);
+    coaImg.appendChild(localAssetImg("coats", country.cca2, "coa-img", () => { coaImg.textContent = "🏛"; }));
   } else {
     coaBlock.style.display = "none";
   }
@@ -554,17 +510,8 @@ export function renderBonusGrid(cells, onPick) {
 
     const flag = document.createElement("span");
     flag.className = "bonus-cell-flag";
-    if (cell.flagSrcs && cell.flagSrcs.length) {
-      const img = document.createElement("img");
-      img.alt = cell.cca2 || "";
-      img.src = cell.flagSrcs[0];
-      let i = 0;
-      img.onerror = () => {
-        i++;
-        if (i < cell.flagSrcs.length) img.src = cell.flagSrcs[i];
-        else { img.onerror = null; flag.textContent = "🏳"; }
-      };
-      flag.appendChild(img);
+    if (cell.cca2) {
+      flag.appendChild(localAssetImg("flags", cell.cca2, "", () => { flag.textContent = "🏳"; }));
     } else {
       flag.textContent = "🏳";
     }

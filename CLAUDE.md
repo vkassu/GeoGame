@@ -48,6 +48,8 @@ GeoGame — браузерная игра-викторина по географ
 - `data/capitals_ru.json` — словарь русских названий столиц (`cca2` → название).
 - `data/religions.json` — словарь доминирующих религий (`cca2` → религия на EN, 244 страны; сливается в `country.majorReligion` в `fetchCountries`).
 - `img/earth.jpg` — спутниковый снимок NASA (Public Domain), фон-глобус в `body::after`.
+- `img/flags/{cca2}.svg` — флаги всех 250 стран (локально, ~2.7 МБ). `img/coats/{cca2}.svg` — гербы 222 стран (локально, ~39 МБ). Скачаны `scripts/download_assets.js`. Рендер — `localAssetImg("flags"|"coats", cca2, …)` в ui.js, фолбэк `svg → png → эмодзи/🏛`. **CDN flagcdn/mainfacts в рантайме больше не используются** (#26).
+- `scripts/download_assets.js` — Node-скрипт (ручной запуск): качает флаги/гербы из CDN (URL берёт из `data/countries.json`) в `img/flags`/`img/coats`.
 
 Разделение `main.js` / `ui.js` заменяет изначально планировавшийся `js/game.js`.
 
@@ -176,13 +178,13 @@ GeoGame — браузерная игра-викторина по географ
 - Названия стран: `translations.rus.common` — русский, есть для всех 250 стран.
 - Столицы в API — **только английские**. Русский словарь — `data/capitals_ru.json` (ключ `cca2`).
 - Покрытие `capitals_ru.json` — все 246 столиц из API. Стран без столицы (`hasCapital` false) — 4. Фильтрация по столице игроков из игры не выкидывает.
-- Флаги — `flags.svg` / `flags.png` (внешний CDN flagcdn.com, не файл в репо). Может транзиентно не загрузиться → `renderQuestion` откатывается `svg → png → эмодзи` (`onerror`-цепочка), чтобы не оставалась битая картинка.
+- Флаги — **локальные `img/flags/{cca2}.svg`** (скачаны `scripts/download_assets.js` из flagcdn.com, коммитятся в репо). Рантайм CDN не дёргает. Фолбэк рендера `svg → png → эмодзи` (`localAssetImg` в ui.js). `flags.svg`/`flags.png` в countries.json остаются как справочник URL для скрипта.
 - `country.region` — одно из `Europe / Asia / Africa / Americas / Oceania` (+ `Antarctic` — 5 сущностей, не используем). **Запрашивается через `?fields=...,region`** — без этого поля `country.region` приходит `undefined` и фильтр по регионам не работает (грабли из задачи #6). Распределение: Africa 59, Americas 56, Europe 53, Asia 50, Oceania 27.
 - **Лимит `/all`: максимум 10 полей в `?fields=`**, иначе `HTTP 400` (`"requesting more than 10 fields"`). Нам нужно 11 → **скрипт `scripts/fetch_countries.js`** делает **два запроса** (7 полей + 5 полей, оба с `cca2`) и сливает по `cca2` (грабли из задачи #9). Рантайм этих запросов больше не делает — читает готовый `data/countries.json` (отказ от API в рантайме, #25).
 - `languages` — объект `{ code: name }`, значения **на английском**. Покрытие 249/250.
 - `currencies` — объект `{ code: { name, symbol } }`, значения на английском. Берём первую запись. 247/250.
 - `area` — число (км²). Фактически у всех 250 > 0, но фильтруем `> 0` защитно.
-- `coatOfArms` — `{ svg, png }` (CDN mainfacts.com). Есть у **222** из 250; у остальных — пустой объект. Рендер `prompt.type === "coa"`, фолбэк `svg → png → 🏛`.
+- `coatOfArms` — `{ svg, png }` (URL CDN mainfacts.com — справочник в countries.json). Есть у **222** из 250; у остальных — пустой объект. Гербы скачаны локально в `img/coats/{cca2}.svg`; рендер `prompt.type === "coa"` через `localAssetImg("coats", …)`, фолбэк `svg → png → 🏛`.
 - `name.nativeName` — `{ langCode: { common, official } }`, уже в поле `name` (отдельный запрос не нужен). Не-английское самоназвание есть у 210/250; `hasNativeName` отсеивает чисто англоязычные.
 
 **Окружение:**

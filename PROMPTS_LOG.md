@@ -18,6 +18,90 @@
 
 ---
 
+## 2026-05-26 #26 | Полная автономность: локальные флаги и гербы
+
+**Цель:** Скачать все флаги (~250) и гербы (~222) в репо, убрать зависимость от flagcdn.com и mainfacts.com. Игра работает офлайн (кроме Firebase-авторизации).
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500 — Network без flagcdn/mainfacts, флаги/гербы рендерятся локально)
+
+**Автор промпта:** Cowork
+
+**Результат / расхождения:**
+- **`scripts/download_assets.js`** (CommonJS, как fetch_countries) — читает `data/countries.json`, качает `flags.svg` → `img/flags/{cca2}.svg` и `coatOfArms.svg` (где есть) → `img/coats/{cca2}.svg`, пауза 100мс, лог прогресса + итог. Запущен: **250 флагов, 222 герба, 0 ошибок**.
+- **Размеры:** `img/flags` ~2.7 МБ, `img/coats` **~39 МБ** (часть SVG-гербов mainfacts тяжёлые — с встроенным растром). Большой объём в репо — но это цена полной автономности (как и просили). Если критично — отдельной задачей пережать/растеризовать гербы.
+- **ui.js:** добавлен хелпер `localAssetImg(dir, cca2, className, onExhausted)` (svg → png → запасной узел). Переведены на локальные пути **все** рендеры флага/герба: `renderQuestion` (флаг + coa), `renderInfoScreen` (флаг + coa; наличие герба теперь по `country.coatOfArms.svg` как справочнику), `renderBonusGrid` (флаг ячейки по cca2). CDN-ссылки `flags.svg/png`, `coatOfArms.svg/png` из рендера убраны.
+- **main.js:** в `startBonus` убран `flagSrcs` (флаг рендерится локально по `cca2`).
+- **data.js не трогал** (URL остаются в countries.json как справочник для скрипта).
+- **.gitignore:** `img/` не игнорируется (проверено) — флаги/гербы коммитятся.
+- **Кеш:** менялись ui.js/main.js → версии импортов выровнены `?v=20260549 → 20260550`; index.html cache-bust → 20260550.
+- **Проверено в браузере:** партия с темами «Страна по флагу» + «Герб» — флаг рендерится из `./img/flags/mk.svg` (naturalWidth 1200), герб из `./img/coats/ir.svg` (naturalWidth 500); в Network только локальные `img/flags/*`, `img/coats/*` + `data/*`, **нет запросов к flagcdn.com / mainfacts.com**; единственное внешнее — gstatic (Firebase auth, вне задачи). Консоль чистая.
+- **Офлайн:** переключатель Offline в preview_eval недоступен, но все игровые ресурсы (данные + флаги + гербы + css/js + earth.jpg) локальны — внешним остаётся лишь Firebase-auth (по ТЗ это ок). Полноценную офлайн-проверку имеет смысл сделать Алексею на деплое (DevTools → Offline).
+
+**Промпт:**
+
+### Шаг 1 — Скрипт `scripts/download_assets.js`
+
+Node.js (CommonJS). Запуск: `node scripts/download_assets.js`
+
+1. Читает `data/countries.json`.
+2. Для каждой страны — скачивает флаг SVG по `flags.svg` → `img/flags/{cca2_lower}.svg`.
+3. Для стран где `coatOfArms.svg` не пустой — скачивает → `img/coats/{cca2_lower}.svg`.
+4. Пауза 100мс между запросами.
+5. Логирует прогресс и итог (флаги / гербы / ошибки).
+6. Ошибки (404, таймаут) — логировать, не падать, продолжать.
+
+Создать `img/flags/` и `img/coats/` если не существуют.
+
+### Шаг 2 — Запустить скрипт
+
+`node scripts/download_assets.js` — дождаться завершения. Убедиться: `img/flags/` ~250 файлов, `img/coats/` ~200+ файлов.
+
+### Шаг 3 — Обновить рендеринг в `js/ui.js`
+
+В `renderQuestion` заменить CDN-ссылки на локальные пути.
+
+Флаг:
+```js
+const cca2 = country.cca2.toLowerCase();
+img.src = `./img/flags/${cca2}.svg`;
+img.onerror = () => {
+  img.src = `./img/flags/${cca2}.png`;
+  img.onerror = () => { img.replaceWith(document.createTextNode(codeToEmoji(country.cca2))); };
+};
+```
+
+Герб:
+```js
+img.src = `./img/coats/${cca2}.svg`;
+img.onerror = () => {
+  img.src = `./img/coats/${cca2}.png`;
+  img.onerror = () => { img.replaceWith(document.createTextNode('🏛')); };
+};
+```
+
+Убрать из renderQuestion старые ссылки на `country.flags.svg/png` и `country.coatOfArms.svg/png`.
+
+### Шаг 4 — .gitignore
+
+`img/flags/` и `img/coats/` НЕ должны быть в .gitignore.
+
+### Проверь в браузере (localhost:5500)
+
+1. Network: нет запросов к flagcdn.com и mainfacts.com.
+2. Флаги и гербы отображаются корректно.
+3. DevTools → Offline → игра работает (Firebase не в счёт).
+
+- Cache-busting: обновить `?v=`.
+- `git add -A && git commit -m "feat: store flags and coats of arms locally"`
+
+На блокерах — стоп, спросить. Не додумывать.
+
+**Результат / расхождения:** —
+
+---
+
 ## 2026-05-26 #25 | Отказ от API в рантайме — локальный data/countries.json
 
 **Цель:** Убрать два запроса к restcountries.com при каждом запуске. Данные хранятся в репо, грузятся из локального файла мгновенно.
