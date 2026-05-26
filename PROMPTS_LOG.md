@@ -18,6 +18,113 @@
 
 ---
 
+## 2026-05-26 #24 | Новые темы: Плотность населения + Религия
+
+**Цель:** Добавить две новые темы Тип Б — «Плотность населения» (вычисляется из population/area) и «Религия» (из нового data/religions.json).
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500, все 4 пункта)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+### 1. Данные для религии
+
+Создать файл `data/religions.json` — объект вида:
+`{ "AF": "Islam", "AL": "Islam", "US": "Christianity", ... }`
+
+Ключ — cca2 (2-буквенный код страны). Значение — доминирующая религия на английском. Покрыть все ~250 стран из API.
+
+Основные значения: "Christianity", "Islam", "Hinduism", "Buddhism", "Judaism", "Irreligion", "Folk religion" (и другие где нужно). Если страна светская или смешанная — наиболее распространённая.
+
+Загрузить в `fetchCountries` рядом с capitals_ru.json:
+```js
+const religionsMap = await fetch('./data/religions.json')
+  .then(r => r.json()).catch(() => ({}));
+```
+Слить в страну как `country.majorReligion = religionsMap[cca2] || ""`.
+
+ВАЖНО: не использовать имя `religion` для поля — может конфликтовать. Использовать именно `majorReligion`.
+
+### 2. Геттеры в `data.js`
+
+```js
+// Религия (только EN — как languages/currencies)
+export function religionName(country) { return country.majorReligion || ""; }
+export function hasReligion(country) { return !!country.majorReligion; }
+
+// Плотность населения
+export function getDensityFormatted(country, lang) {
+  const d = country.population / country.area;
+  const val = d < 1 ? d.toFixed(1) : Math.round(d).toLocaleString();
+  return lang === "ru" ? `${val} чел/км²` : `${val}/km²`;
+}
+export function hasDensity(country) {
+  return country.population > 0 && country.area > 0;
+}
+```
+
+### 3. Темы в `TOPICS` (`main.js`)
+
+```js
+density: {
+  get label() { return t("topic.density.label"); },
+  get question() { return t("topic.density.question"); },
+  prompt(c) { return { type: "text", text: getName(c) }; },
+  answer(c) { return getDensityFormatted(c, getLang()); },
+  valid(c) { return hasDensity(c); },
+},
+religion: {
+  get label() { return t("topic.religion.label"); },
+  get question() { return t("topic.religion.question"); },
+  prompt(c) { return { type: "text", text: getName(c) }; },
+  answer(c) { return religionName(c); },
+  valid(c) { return hasReligion(c); },
+},
+```
+
+Добавить difficulties по аналогии с существующими темами: `TOPICS.density.difficulties = [...]`, `TOPICS.religion.difficulties = [...]`.
+
+### 4. i18n (`i18n.js`)
+
+```
+topic.density.label:    "Плотность" / "Density"
+topic.density.question: "Какова плотность населения?" / "What is the population density?"
+topic.religion.label:   "Религия" / "Religion"
+topic.religion.question:"Какая религия преобладает?" / "What is the dominant religion?"
+```
+
+### 5. Уровни (`levels.js`)
+
+Добавить `density` и `religion` в `LEVEL_UNLOCKS` по аналогии с другими темами. Уровень разблокировки — рядом с `language` или `currency` (середина прогрессии).
+
+### 6. Финал
+
+- Cache-busting: обновить `?v=` в `index.html`.
+- `git add -A && git commit -m "feat: add density and religion topics"`
+
+### Проверь в браузере (localhost:5500)
+
+1. Экран Тем: видны «Плотность» и «Религия».
+2. Включить «Плотность», сыграть — варианты вида «12 чел/км²». Нет NaN/пустых.
+3. Включить «Религия», сыграть — варианты «Islam», «Christianity». Нет пустых.
+4. Переключить язык EN — «Плотность» → «12/km²», метки на английском.
+
+На блокерах — стоп, спросить. Не додумывать.
+
+**Результат / расхождения:**
+- **`data/religions.json`** — 244 страны (cca2 → религия на EN). 6 необитаемых (AQ/BV/GS/HM/TF/UM) не включены — нет населения, в темы не попадают. 7 значений: Christianity/Islam/Buddhism/Hinduism/Judaism/Irreligion/Folk religion. Коды сверены с реальным ответом restcountries (250). Пограничные случаи (Нигерия/Ливан/Эритрея и т.п.) — по плюрализму, могут уточняться.
+- **data.js:** `RELIGIONS_URL` грузится параллельно в `fetchCountries`, слияние `country.majorReligion = religionsMap[cca2] || ""`. Геттеры `religionName`/`hasReligion`/`getDensityFormatted(country, lang)`/`hasDensity` — дословно по промпту (density добавил локаль в `toLocaleString` для корректного разделителя).
+- **main.js:** импорт 4 геттеров, темы `density`/`religion` в `TOPICS`. `difficulties` назначаются автоматически существующим циклом `Object.values(TOPICS).forEach(...)` — ручное `TOPICS.density.difficulties=[...]` из промпта не понадобилось.
+- **i18n.js:** 4 ключа `topic.density.*`/`topic.religion.*` (ru+en). **levels.js:** density/religion в `TOPIC_ORDER` после currency (разблокировка в середине, d0 на уровнях 8/9); 11×4=44 уровня.
+- **Кеш:** менялись data/i18n/levels → межмодульные импорты выровнены на `?v=20260548` (иначе двойной инстанс i18n/data); index.html cache-bust → 20260548.
+- **Проверено (4/4):** экран Тем показывает «Плотность»/«Религия»; Плотность RU → «Мальта»/«1 817 чел/км²» без NaN; Религия RU → Irreligion/Christianity/Buddhism/Islam без пустых; EN → Density/«138/km²». Консоль чистая.
+- **Заметка:** у религии ~7 различных значений, `buildOptions` дедуплицирует по значению → на сложности 4 (10 вариантов) кнопок будет ≤7 (не баг, сетка адаптивна).
+
+---
+
 ## 2026-05-26 #23 | Баги обучения, удаление жизней, перезарядка подсказки, новый бонус
 
 **Цель:** Четыре блока: (А) 4 бага по обучению/бонусу; (Б) удаление жизней; (В) новая механика подсказки с перезарядкой; (Г) пересмотр бонуса + заглушка «Память».

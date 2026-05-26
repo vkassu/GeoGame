@@ -32,7 +32,7 @@ export const XP_THRESHOLDS = (() => {
 // баланс/наполнение поздних уровней (награды, сундуки) — отдельная задача (#17Б+).
 const TOPIC_ORDER = [
   "capital", "country", "countryByCapital", "population", "area",
-  "language", "currency", "nativeName", "coatOfArms",
+  "language", "currency", "density", "religion", "nativeName", "coatOfArms",
 ];
 export const LEVEL_UNLOCKS = (() => {
   const unlocks = {};
@@ -43,7 +43,7 @@ export const LEVEL_UNLOCKS = (() => {
       level++;
     }
   }
-  return unlocks; // уровни 1..36
+  return unlocks; // 11 тем × 4 сложности = уровни 1..44
 })();
 
 // Уровень пользователя из суммарного XP (≥ 1).

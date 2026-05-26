@@ -1,6 +1,6 @@
 // Слой данных: запрос к restcountries.com и геттеры полей страны.
 
-import { getLang } from "./i18n.js?v=20260547";
+import { getLang } from "./i18n.js?v=20260548";
 
 // v3.1 требует ?fields=..., иначе 400.
 // /all ограничивает запрос максимум 10 полями, а нам нужно 11 → два запроса, слияние по cca2.
@@ -10,6 +10,7 @@ const API_EXTRAS_URL = "https://restcountries.com/v3.1/all?fields=cca2,languages
 // Русские названия столиц (API отдаёт столицы только по-английски).
 // Грузится из data/capitals_ru.json при старте, ключ — код страны cca2.
 const CAPITALS_RU_URL = "data/capitals_ru.json";
+const RELIGIONS_URL = "data/religions.json";
 let capitalsRu = {};
 
 // cca2 -> эмодзи-флаг (fallback, если flags.svg недоступен)
@@ -115,6 +116,24 @@ export function hasCoatOfArms(country) {
   return !!(country.coatOfArms && (country.coatOfArms.svg || country.coatOfArms.png));
 }
 
+// Религия (только EN — как languages/currencies; источник — data/religions.json)
+export function religionName(country) {
+  return country.majorReligion || "";
+}
+export function hasReligion(country) {
+  return !!country.majorReligion;
+}
+
+// Плотность населения (жит/км²). lang передаётся явно (как в TOPICS).
+export function getDensityFormatted(country, lang) {
+  const d = country.population / country.area;
+  const val = d < 1 ? d.toFixed(1) : Math.round(d).toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+  return lang === "ru" ? `${val} чел/км²` : `${val}/km²`;
+}
+export function hasDensity(country) {
+  return country.population > 0 && country.area > 0;
+}
+
 // ---- Язык-зависимые обёртки (выбор RU/EN по getLang()) ----
 
 // Имя страны
@@ -169,6 +188,12 @@ export async function fetchCountries() {
     throw new Error("HTTP " + res.status + " " + res.statusText);
   }
   const data = await res.json();
+
+  // Доминирующая религия (cca2 → строка на английском). Не критична — при сбое пустой объект.
+  const religionsMap = await fetch(RELIGIONS_URL).then((r) => r.json()).catch(() => ({}));
+  for (const c of data) {
+    c.majorReligion = religionsMap[c.cca2] || "";
+  }
 
   // Слияние дополнительных полей (languages/currencies/area/coatOfArms) по коду страны.
   if (extraRes.ok) {

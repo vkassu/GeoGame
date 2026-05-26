@@ -14,7 +14,11 @@ import {
   getCapital,
   getPopulationFormatted,
   getAreaFormatted,
-} from "./data.js?v=20260547";
+  getDensityFormatted,
+  hasDensity,
+  religionName,
+  hasReligion,
+} from "./data.js?v=20260548";
 import {
   getLang,
   setLang,
@@ -23,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260547";
+} from "./i18n.js?v=20260548";
 import {
   showScreen,
   getPlayAgainButton,
@@ -55,11 +59,11 @@ import {
   renderTrainingScreen,
   renderBonusGrid,
   revealBonusGrid,
-} from "./ui.js?v=20260547";
+} from "./ui.js?v=20260548";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js";
+  from "./levels.js?v=20260548";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -140,6 +144,20 @@ const TOPICS = {
     prompt: (c) => ({ type: "coa", country: c }),
     answer: (c) => getName(c),
     valid: hasCoatOfArms,
+  },
+  density: {
+    get label() { return t("topic.density.label"); },
+    get question() { return t("topic.density.question"); },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
+    answer: (c) => getDensityFormatted(c, getLang()),
+    valid: (c) => hasDensity(c),
+  },
+  religion: {
+    get label() { return t("topic.religion.label"); },
+    get question() { return t("topic.religion.question"); },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
+    answer: (c) => religionName(c),
+    valid: (c) => hasReligion(c),
   },
 };
 
