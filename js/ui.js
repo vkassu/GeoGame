@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260550";
-import { t } from "./i18n.js?v=20260550";
+import { codeToEmoji, officialName } from "./data.js?v=20260551";
+import { t } from "./i18n.js?v=20260551";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -92,10 +92,6 @@ export function renderXpTotal(n) {
   document.getElementById("xp-total").textContent = String(n);
 }
 
-export function renderGameXp(earned, total) {
-  document.getElementById("game-xp-earned").textContent = String(earned);
-  document.getElementById("game-xp-total").textContent = String(total);
-}
 
 // ---- Экран настройки (Регионы / Темы / Количество) ----
 
@@ -435,9 +431,18 @@ export function renderInfoScreen(country, regionLabel) {
   }
 }
 
-export function renderResult(score, total) {
-  document.getElementById("result-text").textContent =
-    t("result.score", { score, total });
+// Итог сессии: «За партию / Бонус / Итого». bonusText — строка приза или null (если бонуса не было).
+export function renderResultSummary({ correct, total, sessionXP, bonusText, totalXP }) {
+  document.getElementById("result-text").textContent = t("result.score", { score: correct, total });
+  document.getElementById("res-session-xp").textContent = "+" + sessionXP + " XP";
+  const bonusRow = document.getElementById("res-bonus-row");
+  if (bonusText) {
+    bonusRow.style.display = "";
+    document.getElementById("res-bonus-val").textContent = bonusText;
+  } else {
+    bonusRow.style.display = "none";
+  }
+  document.getElementById("res-total-xp").textContent = "+" + totalXP + " XP";
 }
 
 // ---- Экран «Обучение» (Работа над ошибками) ----

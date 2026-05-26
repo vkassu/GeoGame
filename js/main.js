@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260550";
+} from "./data.js?v=20260551";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260550";
+} from "./i18n.js?v=20260551";
 import {
   showScreen,
   getPlayAgainButton,
@@ -41,10 +41,9 @@ import {
   updateTimer,
   renderQuestion,
   markAnswer,
-  renderResult,
+  renderResultSummary,
   renderGamesPlayed,
   renderXpTotal,
-  renderGameXp,
   renderRegionGrid,
   renderTopicList,
   renderBestXp,
@@ -59,11 +58,11 @@ import {
   renderTrainingScreen,
   renderBonusGrid,
   revealBonusGrid,
-} from "./ui.js?v=20260550";
+} from "./ui.js?v=20260551";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260550";
+  from "./levels.js?v=20260551";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -229,8 +228,10 @@ const state = {
   trainingQueue: [],
   // Текущий вопрос обучения (вытащен из очереди).
   trainingCurrent: null,
-  // Приз, выбранный игроком в бонусе (для отображения и начисления).
+  // Приз, выбранный игроком в бонусе (для отображения и начисления). Сбрасывается в startGame.
   bonusPrize: null,
+  // XP до начала текущей сессии (фиксируется в endGame) — стартовая точка XP-бара на result.
+  xpBeforeSession: 0,
   setup: {
     regions: [...DEFAULT_REGIONS],
     topicDifficulties: { ...DEFAULT_TOPIC_DIFFICULTIES }, // { topicKey: -1..3 }, -1 = выключено
@@ -452,6 +453,7 @@ function startGame() {
   state.trainingQueue = [];
   state.trainingCurrent = null;
   state.bonusPrize = null;
+  state.xpBeforeSession = 0;
   state.screen = "game";
   // На случай если предыдущий цикл закончился в режиме обучения — вернуть видимость кнопок.
   const actionsEl = document.querySelector(".answer-actions");
@@ -646,20 +648,48 @@ function endGame() {
     localStorage.setItem(STORAGE.bestXpPerGame, String(state.bestXpPerGame));
   }
 
+  // XP уже начислялся по ходу партии (handleAnswer), поэтому state.xpTotal уже включает
+  // заработанное за игру. Запоминаем «было до сессии» — стартовая точка XP-бара на result
+  // (анимация запускается в конце потока, после бонуса).
+  state.xpBeforeSession = state.xpTotal - state.xpEarnedThisGame;
+
+  // Сохранение игрового XP/рекорда в облако (бонусный XP сохранится позже в finishBonus).
+  if (state.user) {
+    saveUserData(state.user.uid, {
+      xpTotal:      state.xpTotal,
+      bestXpPerGame: state.bestXpPerGame,
+      gamesPlayed:  state.gamesPlayed,
+      inventory:    state.inventory,
+    }).catch(console.error);
+  }
+
+  // Новый порядок: конец игры → Обучение → Бонус → Результат → меню.
+  goToTraining();
+}
+
+// Финальный экран сессии (после Обучения/Бонуса): партия / бонус / итого + анимация XP-бара.
+function goToResult() {
   state.screen = "result";
-  renderResult(state.score, state.questions.length);
+  const sessionXP = state.xpEarnedThisGame;
+  const bonusXP = state.bonusPrize && state.bonusPrize.type === "xp" ? state.bonusPrize.amount : 0;
+  const bonusText = state.bonusPrize ? formatPrize(state.bonusPrize) : null;
+
+  renderResultSummary({
+    correct: state.score,
+    total: state.questions.length,
+    sessionXP,
+    bonusText,
+    totalXP: sessionXP + bonusXP,
+  });
   renderGamesPlayed(state.gamesPlayed);
-  renderGameXp(state.xpEarnedThisGame, state.xpTotal);
   renderXpTotal(state.xpTotal);
   renderBestXp(state.bestXpPerGame);
   showScreen(state.screen);
 
-  // XP-бар: XP уже начислялся по ходу партии (в handleAnswer), поэтому state.xpTotal
-  // уже включает заработанное — «было» восстанавливаем вычитанием xpEarnedThisGame.
-  const xpBefore = state.xpTotal - state.xpEarnedThisGame;
+  // XP-бар от «до сессии» до текущего total (включает игровой + бонусный XP).
   hideLevelUpBanner();
   animateXPBar(
-    xpBefore,
+    state.xpBeforeSession,
     state.xpTotal,
     getXPProgress,
     (newLevel) => {
@@ -671,15 +701,6 @@ function endGame() {
       showLevelUpBanner(newLevel, labels);
     }
   );
-
-  if (state.user) {
-    saveUserData(state.user.uid, {
-      xpTotal:      state.xpTotal,
-      bestXpPerGame: state.bestXpPerGame,
-      gamesPlayed:  state.gamesPlayed,
-      inventory:    state.inventory,
-    }).catch(console.error);
-  }
 }
 
 function goToStart() {
@@ -707,8 +728,8 @@ function startTraining() {
   state.isTraining = true;
   // Очередь — копии записей. Правильно отвеченные выбывают, неправильные остаются.
   state.trainingQueue = state.wrongAnswers.slice();
-  state.score = 0;
-  // В обучении нет таймера/подсказки — скрываем всю .meta через класс.
+  // state.score НЕ сбрасываем: это счёт партии, нужен для result-экрана в конце потока
+  // (обучение свой счёт не ведёт). В обучении нет таймера/подсказки — скрываем .meta классом.
   document.getElementById("game-screen")?.classList.add("training-mode");
   state.screen = "game";
   showScreen(state.screen);
@@ -830,11 +851,11 @@ function finishTraining() {
   goToTraining(); // обратно на training-screen — теперь с активным «Бонус»
 }
 
-// Игрок пропустил обучение → в меню, бонуса нет.
+// Игрок пропустил обучение → сразу на result (без бонуса; bonusPrize остаётся null).
 function skipTraining() {
   state.isTraining = false;
   document.getElementById("game-screen")?.classList.remove("training-mode");
-  goToMenu();
+  goToResult();
 }
 
 // ---------- Бонус ----------
@@ -916,8 +937,8 @@ function finishBonus() {
       }).catch(console.error);
     }
   }
-  state.bonusPrize = null;
-  goToMenu();
+  // bonusPrize НЕ обнуляем — result-экран показывает строку бонуса. Сброс — в startGame.
+  goToResult();
 }
 
 // Перерисовать профиль в главном меню (аватар, имя, уровень, XP-бар, инвентарь, кнопки).
@@ -1109,7 +1130,8 @@ async function init() {
   });
 
   // На экране результата кнопка ведёт в «Обучение» (а не сразу в новую партию).
-  getPlayAgainButton().addEventListener("click", goToTraining);
+  // Result — последний экран потока; кнопка ведёт в меню.
+  getPlayAgainButton().addEventListener("click", goToMenu);
   getHomeButton().addEventListener("click", goHome);
 
   // Экран «Обучение»

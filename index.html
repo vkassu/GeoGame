@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260550">
+  <link rel="stylesheet" href="css/style.css?v=20260551">
 </head>
 <body>
   <header class="topbar">
@@ -200,8 +200,9 @@
     <section id="result-screen" class="screen">
       <h2 data-i18n="result.title">Игра окончена</h2>
       <p class="result-text" id="result-text"></p>
-      <p class="game-xp"><span data-i18n="result.xp-earned">Получено за партию:</span> <span id="game-xp-earned">0</span> <span data-i18n="result.xp-total">XP. Всего:</span> <span id="game-xp-total">0</span> XP</p>
-      <p class="game-xp"><span data-i18n="result.xp-record">Рекорд за партию:</span> <span id="result-best-xp">0</span> XP</p>
+      <p class="game-xp"><span data-i18n="result.session-xp">За партию:</span> <span id="res-session-xp">+0 XP</span></p>
+      <p class="game-xp" id="res-bonus-row" style="display:none"><span data-i18n="result.bonus-xp">Бонус:</span> <span id="res-bonus-val"></span></p>
+      <p class="game-xp"><span data-i18n="result.total-xp">Итого:</span> <span id="res-total-xp">+0 XP</span></p>
       <p class="games-played"><span data-i18n="result.games">Партий сыграно:</span> <span id="games-played">0</span></p>
 
       <!-- XP-бар -->
@@ -222,7 +223,7 @@
         <p class="level-up-detail" id="level-up-detail"></p>
       </div>
 
-      <button id="play-again-btn" class="primary-btn" data-i18n="result.next">Далее</button>
+      <button id="play-again-btn" class="primary-btn" data-i18n="result.to-menu">В меню</button>
     </section>
 
     <!-- Экран «Обучение» (Работа над ошибками) -->
@@ -264,6 +265,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260550"></script>
+  <script type="module" src="js/main.js?v=20260551"></script>
 </body>
 </html>

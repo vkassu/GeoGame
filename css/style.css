@@ -964,35 +964,22 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 
 /* Раскрытая ячейка — флаг сверху + приз снизу */
-.bonus-cell-revealed { background: #fff; }
-.bonus-cell-revealed .bonus-cell-flag {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  font-size: 18px;
-}
-.bonus-cell-revealed .bonus-cell-flag img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+/* Раскрытая ячейка — только приз (без флага, нейтральный фон) */
+.bonus-cell-revealed { background: #f4f7fa; }
+.bonus-cell-revealed .bonus-cell-flag { display: none; }
 .bonus-cell-revealed .bonus-cell-prize {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: bold;
   color: #1a1a1a;
-  background: rgba(255,255,255,0.92);
-  padding: 2px 0;
   width: 100%;
   white-space: nowrap;
 }
-.bonus-cell-prize-icon { font-size: 12px; }
+.bonus-cell-prize-icon { font-size: 22px; }
 .bonus-cell-selected {
   border-color: #4caf50;
   box-shadow: 0 0 0 3px rgba(76,175,80,0.35);
