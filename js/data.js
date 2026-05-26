@@ -1,11 +1,10 @@
-// Слой данных: запрос к restcountries.com и геттеры полей страны.
+// Слой данных: загрузка стран из локального data/countries.json и геттеры полей страны.
 
-import { getLang } from "./i18n.js?v=20260548";
+import { getLang } from "./i18n.js?v=20260549";
 
-// v3.1 требует ?fields=..., иначе 400.
-// /all ограничивает запрос максимум 10 полями, а нам нужно 11 → два запроса, слияние по cca2.
-export const API_URL = "https://restcountries.com/v3.1/all?fields=name,translations,capital,population,flags,cca2,region";
-const API_EXTRAS_URL = "https://restcountries.com/v3.1/all?fields=cca2,languages,currencies,area,coatOfArms";
+// Данные стран — локальный файл (обновляется вручную через scripts/fetch_countries.js).
+// Рантайм больше не ходит в restcountries.com: мгновенная загрузка, без внешних зависимостей.
+const COUNTRIES_URL = "data/countries.json";
 
 // Русские названия столиц (API отдаёт столицы только по-английски).
 // Грузится из data/capitals_ru.json при старте, ключ — код страны cca2.
@@ -176,12 +175,11 @@ export function getAreaFormatted(country) {
   return areaFormatted(country);
 }
 
-// Загружает страны двумя запросами (лимит /all — 10 полей), сливает доп. поля по cca2,
-// подгружает русские столицы, сортирует по англ. названию.
+// Загружает страны из локального data/countries.json (уже слиты доп. поля и
+// отсортированы скриптом), подмешивает русские столицы и религии (тоже локальные).
 export async function fetchCountries() {
-  const [res, extraRes, capRes] = await Promise.all([
-    fetch(API_URL),
-    fetch(API_EXTRAS_URL),
+  const [res, capRes] = await Promise.all([
+    fetch(COUNTRIES_URL),
     fetch(CAPITALS_RU_URL),
   ]);
   if (!res.ok) {
@@ -193,23 +191,6 @@ export async function fetchCountries() {
   const religionsMap = await fetch(RELIGIONS_URL).then((r) => r.json()).catch(() => ({}));
   for (const c of data) {
     c.majorReligion = religionsMap[c.cca2] || "";
-  }
-
-  // Слияние дополнительных полей (languages/currencies/area/coatOfArms) по коду страны.
-  if (extraRes.ok) {
-    try {
-      const extras = await extraRes.json();
-      const byCode = new Map(extras.map((e) => [e.cca2, e]));
-      for (const c of data) {
-        const e = byCode.get(c.cca2);
-        if (e) {
-          c.languages = e.languages;
-          c.currencies = e.currencies;
-          c.area = e.area;
-          c.coatOfArms = e.coatOfArms;
-        }
-      }
-    } catch (_) {}
   }
 
   if (capRes.ok) {

@@ -18,6 +18,76 @@
 
 ---
 
+## 2026-05-26 #25 | Отказ от API в рантайме — локальный data/countries.json
+
+**Цель:** Убрать два запроса к restcountries.com при каждом запуске. Данные хранятся в репо, грузятся из локального файла мгновенно.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (preview :5500 — Network без restcountries, партия играется)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+### Шаг 1 — Скрипт `scripts/fetch_countries.js`
+
+Создать Node.js скрипт. Запускается вручную: `node scripts/fetch_countries.js`
+
+Что делает:
+1. Делает те же два запроса, что сейчас в fetchCountries:
+   - URL 1: `https://restcountries.com/v3.1/all?fields=name,translations,capital,population,flags,cca2,region`
+   - URL 2: `https://restcountries.com/v3.1/all?fields=languages,currencies,area,coatOfArms,cca2`
+2. Сливает оба массива по cca2 (как сейчас в коде).
+3. Сортирует по английскому имени (name.common).
+4. Сохраняет в `data/countries.json` (перезаписывает если есть).
+5. Выводит в консоль: сколько стран сохранено + путь к файлу.
+
+Использовать нативный fetch (Node 18+) или https.get если старше — проверить через `node --version`.
+
+### Шаг 2 — Обновить `fetchCountries` в `js/data.js`
+
+Заменить два API-запроса одним локальным:
+```js
+const res = await fetch('./data/countries.json');
+const countries = await res.json();
+```
+Загрузку `capitals_ru.json` и `religions.json` — оставить, они уже локальные.
+Слияние с capitals_ru и religions — без изменений.
+Переменные `API_URL` и `API_EXTRAS_URL` — удалить.
+
+### Шаг 3 — Сгенерировать data/countries.json
+
+После написания скрипта — запустить сразу:
+`node scripts/fetch_countries.js`
+
+Убедиться что файл создан и содержит ~250 стран.
+
+### Шаг 4 — Проверить .gitignore
+
+`data/countries.json` НЕ должна быть в .gitignore. Если есть — убрать.
+
+### Проверь в браузере (localhost:5500)
+
+1. DevTools → Network → перезагрузить. Запросов к restcountries.com нет.
+2. Игра загружается, страны отображаются, партия играется.
+3. Флаги, столицы, названия — всё на месте.
+
+- Cache-busting: обновить `?v=` в `index.html`.
+- `git add -A && git commit -m "feat: cache countries data locally, remove runtime API calls"`
+
+На блокерах — стоп, спросить. Не додумывать.
+
+**Результат / расхождения:**
+- **`scripts/fetch_countries.js`** — Node-скрипт. **CommonJS** (в репо нет `package.json`/`type:module`, а промпт задал `.js` → ESM-`import` упал бы; использовал `require`). Node v24 → нативный `fetch`. Делает те же 2 запроса, сливает extras по `cca2`, сортирует по `name.common`, пишет `data/countries.json` (минифицированный JSON), логирует число стран и путь. Запущен — сохранил **250 стран, 647 КБ**.
+- **`data/countries.json`** — создан, закоммичен (не в .gitignore — проверено).
+- **`js/data.js`** — `fetchCountries` теперь грузит `data/countries.json` одним запросом; `API_URL`/`API_EXTRAS_URL` и блок слияния extras удалены (слияние уже сделано скриптом). Подмешивание `capitals_ru.json` + `religions.json` и сортировка — без изменений. `API_URL` нигде больше не импортировался (проверено grep).
+- **Кеш модулей:** `data.js` менялся → версии всех межмодульных импортов выровнены `?v=20260548 → 20260549` (i18n/data у всех импортёров одинаково — иначе двойной инстанс); index.html cache-bust → 20260549.
+- **Проверено в браузере:** свежая загрузка (v20260549) — в Network есть `data/countries.json` (200), `capitals_ru.json`, `religions.json`, **нет запросов к restcountries.com**; статус «Загружено стран: 250»; партия играется (тема «Столица»: «Эстония» → варианты столиц, рус. названия из capitals_ru подмешаны). Консоль чистая. (Запросы к restcountries в логе Network — из более ранних кешированных загрузок до правки.)
+- **Не менялось:** флаги/гербы по-прежнему грузятся с внешних CDN (flagcdn/mainfacts) — это отдельные ресурсы, не «данные стран»; задача про API данных стран.
+
+---
+
 ## 2026-05-26 #24.1 | Косметика: убраны бантики с бонус-ячеек + чистка инвентаря
 
 **Цель:** (1) убрать 🎀 с закрытых ячеек бонусной сетки (показывать просто флаг); (2) добить ❓/❤️ из инвентаря меню, если остались.

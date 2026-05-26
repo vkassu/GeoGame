@@ -14,11 +14,11 @@ GeoGame — браузерная игра-викторина по географ
 
 ## Данные
 
-restcountries.com API (v3.1). Запрос требует параметр `?fields=...`, иначе вернёт 400. Данные стран загружаются на лету при старте (кеш в `data/countries.json` пока не реализован). Язык интерфейса — RU/EN (переключатель в шапке, по умолчанию русский); русские названия стран берутся из `translations.rus`, английские — из `name.common`.
+**Источник стран — локальный `data/countries.json`** (закоммичен в репо). Рантайм **больше не ходит в restcountries.com**: `fetchCountries` грузит один локальный файл — мгновенно, без внешней зависимости. Файл обновляется **вручную** скриптом `node scripts/fetch_countries.js` (делает два запроса к API, сливает по `cca2`, сортирует по `name.common`, перезаписывает `data/countries.json`). Язык интерфейса — RU/EN (переключатель в шапке, по умолчанию русский); русские названия стран берутся из `translations.rus`, английские — из `name.common`.
 
 Столицы API отдаёт **только по-английски**, поэтому русские названия столиц лежат в отдельном файле данных `data/capitals_ru.json` (ключ — код страны `cca2`) и подгружаются в `fetchCountries`. Словарь покрывает все 246 столиц из API, поэтому страны из игры не исключаются — играется полный список. `capitalName` берёт русское название из словаря (с фолбэком на английское из API, если страну вдруг добавят новую).
 
-Эффективный набор полей: `name, translations, capital, population, flags, cca2, region, languages, currencies, area, coatOfArms`. Это 11 полей, а `/all` ограничивает запрос 10 → `fetchCountries` делает **два запроса** (`API_URL` 7 полей + `API_EXTRAS_URL` 5 полей, оба с `cca2`) и сливает по `cca2`. Языки (`languages`) и валюты (`currencies`) API отдаёт **только на английском** — в темах «Язык»/«Валюта» ответы остаются английскими в обоих языковых режимах.
+Эффективный набор полей: `name, translations, capital, population, flags, cca2, region, languages, currencies, area, coatOfArms`. Это 11 полей, а `/all` ограничивает запрос 10 → **скрипт** `scripts/fetch_countries.js` делает **два запроса** (7 полей + 5 полей, оба с `cca2`), сливает по `cca2` и пишет в `data/countries.json`. Рантайм (`fetchCountries`) этот файл просто читает. Языки (`languages`) и валюты (`currencies`) API отдаёт **только на английском** — в темах «Язык»/«Валюта» ответы остаются английскими в обоих языковых режимах.
 
 Фон-глобус: локальный `img/earth.jpg` (сферическое фото Blue Marble, NASA Public Domain, 1024×1024 ~174 КБ), подключается через CSS `body::after` по переменной `:root{--earth-bg}`. **Удалённой подгрузки больше нет** (был `js/bg.js` с Wikimedia-вариантами — удалён в #18): она грузила лишний внешний файл с перерисовкой и тормозила фон, а локальный 1024px и так качественнее любого живого Wikimedia-thumb. Теперь фон грузится мгновенно из репозитория, без внешних зависимостей. История поиска источников и грабли Wikimedia bucket-ширин — в PROMPTS_LOG #14/#17.
 
@@ -37,12 +37,14 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 
 - `index.html` — единственная страница: главное меню `#menu-screen` (первый экран: профиль + кнопки) + экраны настройки (Регионы `#start-screen` / Темы `#topics-screen` / Количество `#count-screen`) + игра `#game-screen` + информация `#info-screen` + результат `#result-screen`, переключаются классом `.active`.
 - `css/style.css` — все стили.
-- `js/data.js` — слой данных: запрос к API (`fetchCountries`, два запроса + слияние по `cca2`) и геттеры полей страны. Сырые геттеры (`ruName`/`engName`/`capitalName`/`hasCapital`/`languageName`/`currencyName`/`nativeNameStr`/`hasCoatOfArms`/`codeToEmoji` и `has*`-предикаты) + **lang-aware обёртки** (`getName`/`getCapital`/`getPopulationFormatted`/`getAreaFormatted`), выбирающие RU/EN по `getLang()`. Без DOM и без игровой логики.
+- `js/data.js` — слой данных: загрузка стран из локального `data/countries.json` (`fetchCountries`) + подмешивание русских столиц/религий и геттеры полей страны. Сырые геттеры (`ruName`/`engName`/`capitalName`/`hasCapital`/`languageName`/`currencyName`/`nativeNameStr`/`hasCoatOfArms`/`codeToEmoji` и `has*`-предикаты) + **lang-aware обёртки** (`getName`/`getCapital`/`getPopulationFormatted`/`getAreaFormatted`), выбирающие RU/EN по `getLang()`. Без DOM и без игровой логики.
 - `js/main.js` — точка входа: игровой `state`, конфиг тем `TOPICS` и регионов `REGIONS`, поток настройки (Регионы/Темы/Количество), логика вопросов, единственное место работы с `localStorage`.
 - `js/ui.js` — слой представления: переключение экранов и заполнение DOM. Без игровой логики и без state.
 - `js/i18n.js` — интернационализация: текущий язык (`getLang`/`setLang`), словарь UI-строк и `t(key, vars)`, `applyI18n()` (по `data-i18n`), словари `TOPIC_LABELS` / `TOPIC_QUESTIONS` / `REGION_LABELS`.
 - `js/firebase.js` — авторизация и облако: Firebase Auth (Google, popup) + Firestore через CDN ES-модули (без npm). Экспорт `signInWithGoogle`/`signOutUser`/`onUserChanged`/`loadUserData`/`saveUserData`.
 - `js/levels.js` — система уровней/сложностей/разблокировок (data-layer, без UI и state): `XP_THRESHOLDS` (50, накопит. пороги), `LEVEL_UNLOCKS` (уровень → разблокировки тем×сложностей), `getLevelFromXP`/`getXPForLevel`/`getXPProgress`/`getUnlockedDifficulties`.
+- `data/countries.json` — **основной локальный датасет стран** (~250, слитые поля, отсортированы). Генерируется `scripts/fetch_countries.js`, коммитится в репо. Рантайм читает его вместо API.
+- `scripts/fetch_countries.js` — Node-скрипт (CommonJS, запуск вручную): тянет restcountries, сливает, сортирует → `data/countries.json`.
 - `data/capitals_ru.json` — словарь русских названий столиц (`cca2` → название).
 - `data/religions.json` — словарь доминирующих религий (`cca2` → религия на EN, 244 страны; сливается в `country.majorReligion` в `fetchCountries`).
 - `img/earth.jpg` — спутниковый снимок NASA (Public Domain), фон-глобус в `body::after`.
@@ -176,7 +178,7 @@ restcountries.com API (v3.1). Запрос требует параметр `?fie
 - Покрытие `capitals_ru.json` — все 246 столиц из API. Стран без столицы (`hasCapital` false) — 4. Фильтрация по столице игроков из игры не выкидывает.
 - Флаги — `flags.svg` / `flags.png` (внешний CDN flagcdn.com, не файл в репо). Может транзиентно не загрузиться → `renderQuestion` откатывается `svg → png → эмодзи` (`onerror`-цепочка), чтобы не оставалась битая картинка.
 - `country.region` — одно из `Europe / Asia / Africa / Americas / Oceania` (+ `Antarctic` — 5 сущностей, не используем). **Запрашивается через `?fields=...,region`** — без этого поля `country.region` приходит `undefined` и фильтр по регионам не работает (грабли из задачи #6). Распределение: Africa 59, Americas 56, Europe 53, Asia 50, Oceania 27.
-- **Лимит `/all`: максимум 10 полей в `?fields=`**, иначе `HTTP 400` (`"requesting more than 10 fields"`). Нам нужно 11 → `fetchCountries` делает **два запроса** (`API_URL` 7 полей + `API_EXTRAS_URL` 5 полей, оба с `cca2`) и сливает по `cca2` (грабли из задачи #9).
+- **Лимит `/all`: максимум 10 полей в `?fields=`**, иначе `HTTP 400` (`"requesting more than 10 fields"`). Нам нужно 11 → **скрипт `scripts/fetch_countries.js`** делает **два запроса** (7 полей + 5 полей, оба с `cca2`) и сливает по `cca2` (грабли из задачи #9). Рантайм этих запросов больше не делает — читает готовый `data/countries.json` (отказ от API в рантайме, #25).
 - `languages` — объект `{ code: name }`, значения **на английском**. Покрытие 249/250.
 - `currencies` — объект `{ code: { name, symbol } }`, значения на английском. Берём первую запись. 247/250.
 - `area` — число (км²). Фактически у всех 250 > 0, но фильтруем `> 0` защитно.
