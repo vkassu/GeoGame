@@ -947,7 +947,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .bonus-cell:active:not(:disabled):not(.bonus-cell-revealed) { transform: scale(0.97); }
 .bonus-cell:disabled { cursor: default; }
 
-/* Закрытая ячейка — флаг с красным бантом сверху */
+/* Закрытая ячейка — просто флаг страны (бант убран в #24.1) */
 .bonus-cell-closed { background: linear-gradient(to bottom, #fff, #e3e8ee); }
 .bonus-cell-closed .bonus-cell-flag {
   width: 100%;
@@ -956,22 +956,11 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  filter: brightness(0.95);
 }
 .bonus-cell-closed .bonus-cell-flag img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.bonus-cell-closed::after {
-  content: "🎀";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 28px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
-  pointer-events: none;
 }
 
 /* Раскрытая ячейка — флаг сверху + приз снизу */
