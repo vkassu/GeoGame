@@ -2,16 +2,20 @@
 // Никакой игровой логики и state — только DOM.
 
 import { codeToEmoji, officialName } from "./data.js";
-import { t } from "./i18n.js";
+import { t } from "./i18n.js?v=20260546";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
   for (const s of screens) {
     s.classList.toggle("active", s.id === `${name}-screen`);
   }
-  // Кнопка «На главную» видна на всех экранах, кроме меню и первого шага настройки.
+  // Кнопка «На главную» видна на всех экранах, кроме меню, первого шага настройки,
+  // и финальных экранов (Result/Training/Bonus) — там свой поток выхода.
   const home = getHomeButton();
-  if (home) home.hidden = (name === "start" || name === "menu");
+  if (home) home.hidden = (
+    name === "start" || name === "menu" ||
+    name === "result" || name === "training" || name === "bonus"
+  );
 }
 
 export function getPlayAgainButton() {
@@ -463,4 +467,137 @@ export function renderInfoScreen(country, regionLabel) {
 export function renderResult(score, total) {
   document.getElementById("result-text").textContent =
     t("result.score", { score, total });
+}
+
+// ---- Экран «Обучение» (Работа над ошибками) ----
+
+/**
+ * Рендерит состояние экрана training.
+ * @param {number} remaining — сколько ошибок ещё не закрыто (0..N)
+ */
+export function renderTrainingScreen(remaining) {
+  const titleEl    = document.getElementById("training-title");
+  const subtitleEl = document.getElementById("training-subtitle");
+  const startBtn   = document.getElementById("training-start-btn");
+  const bonusBtn   = document.getElementById("training-bonus-btn");
+  const skipBtn    = document.getElementById("training-skip-btn");
+  const remEl      = document.getElementById("training-remaining");
+
+  titleEl.textContent = t("training.title");
+
+  if (remaining === 0) {
+    // Все ошибки исправлены (или их и не было): «Обучение завершено!», Бонус активен.
+    subtitleEl.textContent = t("training.done");
+    startBtn.disabled = true;
+    remEl.textContent = "";
+    bonusBtn.disabled = false;
+    skipBtn.style.display = "none";
+  } else {
+    // Есть незакрытые ошибки: можно тренироваться или пропустить.
+    subtitleEl.textContent = t("training.subtitle");
+    startBtn.disabled = false;
+    remEl.textContent = t("training.remaining", { n: remaining });
+    bonusBtn.disabled = true;
+    skipBtn.style.display = "";
+  }
+}
+
+// ---- Экран «Бонус» ----
+
+/**
+ * Рендерит сетку 5×5 закрытых ячеек (фаза 1, до клика).
+ * @param {Array<{flagSrcs: string[], cca2: string, prize: object}>} cells — 25 элементов
+ * @param {Function} onPick — (index) => void
+ */
+export function renderBonusGrid(cells, onPick) {
+  const grid = document.getElementById("bonus-grid");
+  grid.innerHTML = "";
+  document.getElementById("bonus-hint").style.display = "";
+  document.getElementById("bonus-result").style.display = "none";
+  document.getElementById("bonus-end-btn").disabled = true;
+
+  cells.forEach((cell, index) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bonus-cell bonus-cell-closed";
+    btn.dataset.index = String(index);
+
+    const flag = document.createElement("span");
+    flag.className = "bonus-cell-flag";
+    if (cell.flagSrcs && cell.flagSrcs.length) {
+      const img = document.createElement("img");
+      img.alt = cell.cca2 || "";
+      img.src = cell.flagSrcs[0];
+      let i = 0;
+      img.onerror = () => {
+        i++;
+        if (i < cell.flagSrcs.length) img.src = cell.flagSrcs[i];
+        else { img.onerror = null; flag.textContent = "🏳"; }
+      };
+      flag.appendChild(img);
+    } else {
+      flag.textContent = "🏳";
+    }
+    btn.appendChild(flag);
+
+    btn.addEventListener("click", () => onPick(index));
+    grid.appendChild(btn);
+  });
+}
+
+/**
+ * Раскрывает все ячейки (фаза 2, после клика игрока). Выделяет выбранную.
+ * @param {Array<{flagSrcs, cca2, prize}>} cells
+ * @param {number} pickedIndex
+ * @param {string} pickedCountryName — название страны, чей флаг был под выбранным бантом
+ * @param {string} pickedPrizeText   — крупный текст приза («+4200 XP»)
+ */
+export function revealBonusGrid(cells, pickedIndex, pickedCountryName, pickedPrizeText) {
+  const grid = document.getElementById("bonus-grid");
+  const buttons = grid.querySelectorAll(".bonus-cell");
+
+  buttons.forEach((btn, index) => {
+    btn.classList.remove("bonus-cell-closed");
+    btn.classList.add("bonus-cell-revealed");
+    if (index === pickedIndex) btn.classList.add("bonus-cell-selected");
+    btn.disabled = true;
+
+    // Под бантом был флаг — он уже отрисован, добавляем строчку приза.
+    const prize = cells[index].prize;
+    const prizeEl = document.createElement("span");
+    prizeEl.className = "bonus-cell-prize";
+    const iconEl = document.createElement("span");
+    iconEl.className = "bonus-cell-prize-icon";
+    iconEl.textContent = prizeIcon(prize.type);
+    const valEl = document.createElement("span");
+    valEl.textContent = prize.type === "xp"
+      ? formatXpShort(prize.amount)
+      : String(prize.amount);
+    prizeEl.append(iconEl, valEl);
+    btn.appendChild(prizeEl);
+  });
+
+  document.getElementById("bonus-hint").style.display = "none";
+  const resultBlock = document.getElementById("bonus-result");
+  resultBlock.style.display = "";
+  document.getElementById("bonus-result-country").textContent = pickedCountryName;
+  document.getElementById("bonus-result-prize").textContent = pickedPrizeText;
+  document.getElementById("bonus-end-btn").disabled = false;
+}
+
+function prizeIcon(type) {
+  switch (type) {
+    case "xp":    return "✨";
+    case "hint":  return "❓";
+    case "chest": return "🧰";
+    case "life":  return "❤️";
+    default:      return "?";
+  }
+}
+
+// Короткий формат XP для тесных ячеек («4200» → «4.2K»).
+function formatXpShort(n) {
+  if (n >= 10000) return Math.round(n / 1000) + "K";
+  if (n >= 1000)  return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
 }

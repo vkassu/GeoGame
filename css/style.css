@@ -837,3 +837,171 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .menu-btn-primary:hover { border-color: #b0bec5; background: linear-gradient(to bottom, #4fc3f7, #0288d1); filter: brightness(1.1); }
 .menu-btn-row { display: flex; gap: 10px; }
 .menu-btn-half { flex: 1; }
+
+/* === Экран «Обучение» (Работа над ошибками) === */
+.training-subtitle {
+  font-size: 14px;
+  color: #555;
+  margin: 0 0 24px;
+  line-height: 1.4;
+}
+.training-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid #b0bec5;
+  background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.3);
+  color: #fff;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: filter .15s, transform .1s;
+}
+.training-action-btn:hover:not(:disabled) { filter: brightness(1.15); }
+.training-action-btn:active:not(:disabled) { transform: scale(0.98); }
+.training-action-btn:disabled {
+  background: #e0e6ec;
+  border-color: #cdd5df;
+  color: #98a4b2;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.training-btn-main { font-size: 18px; }
+.training-btn-sub  { font-size: 13px; font-weight: 600; opacity: 0.92; }
+.training-action-btn:disabled .training-btn-sub { opacity: 0.7; }
+/* «Пропустить обучение» — менее заметная (вторичная) кнопка */
+.training-btn-skip {
+  background: transparent;
+  border-color: #d0d7de;
+  color: #2c3e50;
+  box-shadow: none;
+  font-weight: 600;
+  min-height: 48px;
+}
+.training-btn-skip:hover:not(:disabled) {
+  background: #f7f9fb;
+  border-color: #aab4be;
+  filter: none;
+}
+
+/* === Экран «Бонус» === */
+.bonus-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin: 12px 0 16px;
+}
+.bonus-cell {
+  aspect-ratio: 1 / 1;
+  border: 2px solid #b0bec5;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: filter .15s, transform .1s, border-color .15s;
+  padding: 0;
+}
+.bonus-cell:hover:not(:disabled):not(.bonus-cell-revealed) { filter: brightness(1.05); transform: scale(1.03); }
+.bonus-cell:active:not(:disabled):not(.bonus-cell-revealed) { transform: scale(0.97); }
+.bonus-cell:disabled { cursor: default; }
+
+/* Закрытая ячейка — флаг с красным бантом сверху */
+.bonus-cell-closed { background: linear-gradient(to bottom, #fff, #e3e8ee); }
+.bonus-cell-closed .bonus-cell-flag {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  filter: brightness(0.95);
+}
+.bonus-cell-closed .bonus-cell-flag img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bonus-cell-closed::after {
+  content: "🎀";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+/* Раскрытая ячейка — флаг сверху + приз снизу */
+.bonus-cell-revealed { background: #fff; }
+.bonus-cell-revealed .bonus-cell-flag {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 18px;
+}
+.bonus-cell-revealed .bonus-cell-flag img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bonus-cell-revealed .bonus-cell-prize {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #1a1a1a;
+  background: rgba(255,255,255,0.92);
+  padding: 2px 0;
+  width: 100%;
+  white-space: nowrap;
+}
+.bonus-cell-prize-icon { font-size: 12px; }
+.bonus-cell-selected {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76,175,80,0.35);
+}
+
+.bonus-hint {
+  text-align: center;
+  font-size: 14px;
+  color: #888;
+  margin: 6px 0 12px;
+}
+.bonus-result {
+  text-align: center;
+  margin: 12px 0;
+  padding: 12px;
+  background: #f4f7fa;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+}
+.bonus-result-country {
+  font-size: 14px;
+  color: #555;
+  margin: 0 0 6px;
+}
+.bonus-result-prize {
+  font-size: 22px;
+  font-weight: bold;
+  color: #2c7be5;
+  margin: 0;
+}

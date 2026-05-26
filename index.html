@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260544">
+  <link rel="stylesheet" href="css/style.css?v=20260546">
 </head>
 <body>
   <header class="topbar">
@@ -220,10 +220,48 @@
         <p class="level-up-detail" id="level-up-detail"></p>
       </div>
 
-      <button id="play-again-btn" class="primary-btn" data-i18n="result.play-again">Играть снова</button>
+      <button id="play-again-btn" class="primary-btn" data-i18n="result.next">Далее</button>
+    </section>
+
+    <!-- Экран «Обучение» (Работа над ошибками) -->
+    <section id="training-screen" class="screen">
+      <h2 id="training-title" data-i18n="training.title">Работа над ошибками</h2>
+      <p id="training-subtitle" class="training-subtitle" data-i18n="training.subtitle">
+        Вы можете продолжать тренироваться, пока не ответите на все вопросы правильно
+      </p>
+
+      <button type="button" class="training-action-btn training-btn-train" id="training-start-btn">
+        <span class="training-btn-main" data-i18n="training.start">Обучение</span>
+        <span class="training-btn-sub" id="training-remaining"></span>
+      </button>
+
+      <button type="button" class="training-action-btn training-btn-bonus" id="training-bonus-btn" disabled>
+        <span class="training-btn-main" data-i18n="training.bonus">Бонус</span>
+      </button>
+
+      <button type="button" class="training-action-btn training-btn-skip" id="training-skip-btn"
+              data-i18n="training.skip">Пропустить обучение</button>
+    </section>
+
+    <!-- Экран «Бонус» -->
+    <section id="bonus-screen" class="screen">
+      <h2 data-i18n="bonus.title">Бонус</h2>
+
+      <div class="bonus-grid" id="bonus-grid" aria-label="Бонусная сетка"></div>
+
+      <p class="bonus-hint" id="bonus-hint" data-i18n="bonus.pick">Выберите</p>
+
+      <!-- Блок результата (виден после клика) -->
+      <div class="bonus-result" id="bonus-result" style="display:none">
+        <p class="bonus-result-country" id="bonus-result-country"></p>
+        <p class="bonus-result-prize" id="bonus-result-prize"></p>
+      </div>
+
+      <button type="button" class="primary-btn" id="bonus-end-btn" disabled
+              data-i18n="bonus.end">Конец</button>
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260544"></script>
+  <script type="module" src="js/main.js?v=20260546"></script>
 </body>
 </html>
