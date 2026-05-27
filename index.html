@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260552">
+  <link rel="stylesheet" href="css/style.css?v=20260553">
 </head>
 <body>
   <header class="topbar">
@@ -182,18 +182,38 @@
 
     <!-- Экран «Информация» о стране -->
     <section id="info-screen" class="screen">
-      <div id="info-flag" class="info-flag"></div>
-      <div class="info-name-block">
-        <h2 id="info-name" class="info-name"></h2>
-        <p  id="info-official" class="info-official"></p>
-      </div>
-      <div id="info-rows" class="info-rows"></div>
-      <div id="info-coa-block" class="info-coa-block" style="display:none">
-        <p class="info-row-label" data-i18n="info.coa">Герб</p>
-        <div id="info-coa-img" class="info-coa-img"></div>
-      </div>
+      <div id="info-card"></div>
       <div class="setup-nav" style="margin-top:16px">
         <button type="button" class="nav-btn nav-btn-primary" id="info-back-btn" data-i18n="info.back">← Назад</button>
+      </div>
+    </section>
+
+    <!-- Экран «Энциклопедия» (3 вида: регионы / страны / карточка) -->
+    <section id="encyclopedia-screen" class="screen">
+      <!-- Вид 1: Регионы -->
+      <div id="enc-regions" class="enc-view">
+        <h2 data-i18n="menu.encyclopedia">Энциклопедия</h2>
+        <div id="enc-region-grid" class="enc-region-grid"></div>
+        <div class="setup-nav" style="margin-top:16px">
+          <button type="button" class="nav-btn" id="enc-regions-back" data-i18n="enc.back">← Назад</button>
+        </div>
+      </div>
+
+      <!-- Вид 2: Страны региона -->
+      <div id="enc-countries" class="enc-view" style="display:none">
+        <div class="enc-countries-header">
+          <button type="button" class="nav-btn" id="enc-countries-back" data-i18n="enc.back">← Назад</button>
+          <h2 id="enc-countries-title" class="enc-countries-title"></h2>
+        </div>
+        <div id="enc-country-grid" class="enc-country-grid"></div>
+      </div>
+
+      <!-- Вид 3: Карточка страны -->
+      <div id="enc-detail" class="enc-view" style="display:none">
+        <div class="setup-nav" style="margin-bottom:14px">
+          <button type="button" class="nav-btn" id="enc-detail-back" data-i18n="enc.back">← Назад</button>
+        </div>
+        <div id="enc-detail-card"></div>
       </div>
     </section>
 
@@ -266,6 +286,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260552"></script>
+  <script type="module" src="js/main.js?v=20260553"></script>
 </body>
 </html>

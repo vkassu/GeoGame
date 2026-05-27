@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260552";
+} from "./data.js?v=20260553";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260552";
+} from "./i18n.js?v=20260553";
 import {
   showScreen,
   getPlayAgainButton,
@@ -50,6 +50,9 @@ import {
   renderAvailableCount,
   setNavButtonEnabled,
   renderInfoScreen,
+  renderEncRegions,
+  renderEncCountries,
+  renderCountryCard,
   animateXPBar,
   showLevelUpBanner,
   hideLevelUpBanner,
@@ -57,11 +60,11 @@ import {
   renderTrainingScreen,
   renderBonusGrid,
   revealBonusGrid,
-} from "./ui.js?v=20260552";
+} from "./ui.js?v=20260553";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260552";
+  from "./levels.js?v=20260553";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -169,6 +172,15 @@ const REGIONS = {
   africa:   { get label() { return REGION_LABELS.africa[getLang()]; },   apiValue: "Africa"   },
   americas: { get label() { return REGION_LABELS.americas[getLang()]; }, apiValue: "Americas" },
   oceania:  { get label() { return REGION_LABELS.oceania[getLang()]; },  apiValue: "Oceania"  },
+};
+
+// Цвета карточек регионов в Энциклопедии (вид 1).
+const ENC_REGION_COLORS = {
+  europe:   "#3a7bd5",
+  asia:     "#c0392b",
+  africa:   "#e8a020",
+  americas: "#27ae60",
+  oceania:  "#16a085",
 };
 
 const QUESTION_COUNTS = [10, 25, 50, 75, 100];
@@ -605,6 +617,21 @@ function getRegionLabel(country) {
   return entry ? entry.label : (country.region || "");
 }
 
+// Вычисляет lang-aware значения и кладёт их во временные поля country._* —
+// UI-слой только читает (не дёргает бизнес-логику). Общий помощник для карточки
+// страны (экран «Информация» в игре и «Энциклопедия» → детальный вид).
+function decorateCountry(country) {
+  country._displayName = getName(country);
+  country._capital     = getCapital(country);
+  country._population  = getPopulationFormatted(country);
+  country._area        = getAreaFormatted(country);
+  country._density     = hasDensity(country) ? getDensityFormatted(country, getLang()) : null;
+  country._language    = hasLanguages(country) ? languageName(country) : null;
+  country._currency    = hasCurrencies(country) ? currencyName(country) : null;
+  country._religion    = hasReligion(country) ? religionName(country) : null;
+  country._nativeName  = hasNativeName(country) ? nativeNameStr(country) : null;
+}
+
 // Открыть карточку страны текущего вопроса (кнопка «Информация» на экране ответа).
 function showInfo() {
   // В обучении актуальна trainingCurrent.country, а не state.questions[...].
@@ -613,15 +640,7 @@ function showInfo() {
     : state.questions[state.currentQuestion]?.country;
   if (!country) return;
 
-  // Вычисленные (lang-aware) значения как временные поля — UI-слой их только читает.
-  country._displayName = getName(country);
-  country._capital     = getCapital(country);
-  country._population  = getPopulationFormatted(country);
-  country._area        = getAreaFormatted(country);
-  country._language    = hasLanguages(country) ? languageName(country) : null;
-  country._currency    = hasCurrencies(country) ? currencyName(country) : null;
-  country._nativeName  = hasNativeName(country) ? nativeNameStr(country) : null;
-
+  decorateCountry(country);
   renderInfoScreen(country, getRegionLabel(country));
   showScreen("info");
 }
@@ -959,6 +978,62 @@ function goToMenu() {
   showScreen(state.screen);
 }
 
+// ---------- Энциклопедия (3 вида: регионы / страны / карточка) ----------
+
+let encView = "regions";      // 'regions' | 'countries' | 'detail'
+let encRegionKey = null;      // выбранный регион (для вида 2 и возврата из вида 3)
+let encCountry = null;        // выбранная страна (для вида 3)
+
+function goToEncyclopedia() {
+  state.screen = "encyclopedia";
+  encView = "regions";
+  renderEncyclopedia();
+  showScreen(state.screen);
+}
+
+function encShowRegions() {
+  encView = "regions";
+  renderEncyclopedia();
+}
+function encShowCountries(regionKey) {
+  encView = "countries";
+  encRegionKey = regionKey;
+  renderEncyclopedia();
+}
+function encShowDetail(country) {
+  encView = "detail";
+  encCountry = country;
+  renderEncyclopedia();
+}
+
+function renderEncyclopedia() {
+  document.getElementById("enc-regions").style.display   = encView === "regions"   ? "" : "none";
+  document.getElementById("enc-countries").style.display = encView === "countries" ? "" : "none";
+  document.getElementById("enc-detail").style.display    = encView === "detail"    ? "" : "none";
+
+  if (encView === "regions") {
+    const items = Object.keys(REGIONS).map((k) => ({
+      key: k,
+      label: REGIONS[k].label,
+      count: state.allCountries.filter((c) => c.region === REGIONS[k].apiValue).length,
+      color: ENC_REGION_COLORS[k],
+    }));
+    renderEncRegions(items, encShowCountries);
+  } else if (encView === "countries") {
+    const apiVal = REGIONS[encRegionKey].apiValue;
+    const locale = getLang() === "ru" ? "ru" : "en";
+    const items = state.allCountries
+      .filter((c) => c.region === apiVal)
+      .map((c) => ({ country: c, name: getName(c) }))
+      .sort((a, b) => a.name.localeCompare(b.name, locale));
+    renderEncCountries(REGIONS[encRegionKey].label, items, encShowDetail);
+  } else if (encView === "detail" && encCountry) {
+    decorateCountry(encCountry);
+    renderCountryCard(encCountry, getRegionLabel(encCountry),
+      document.getElementById("enc-detail-card"));
+  }
+}
+
 // Кнопка «На главную» (← меню). Если партия идёт — спрашиваем подтверждение.
 function goHome() {
   if (state.screen === "game" && !state.isGameOver) {
@@ -976,6 +1051,7 @@ function switchLang() {
   renderStatus();
   refreshSetupUI();
   refreshMenuScreen();
+  if (state.screen === "encyclopedia") renderEncyclopedia();
   if (state.user) {
     saveUserData(state.user.uid, { lang: next }).catch(console.error);
   }
@@ -1087,7 +1163,7 @@ async function init() {
 
   // Главное меню
   document.getElementById("menu-new-game-btn").addEventListener("click", goToStart);
-  document.getElementById("menu-encyclopedia-btn").addEventListener("click", () => console.log("Энциклопедия: не реализовано"));
+  document.getElementById("menu-encyclopedia-btn").addEventListener("click", goToEncyclopedia);
   document.getElementById("menu-quests-btn").addEventListener("click", () => console.log("Задания: не реализовано"));
   document.getElementById("menu-memory-btn")?.addEventListener("click", () => console.log("Memory game: coming soon"));
   document.getElementById("menu-auth-btn").addEventListener("click", () => {
@@ -1152,6 +1228,11 @@ async function init() {
   });
   document.getElementById("info-back-btn")
     ?.addEventListener("click", goBackFromInfo);
+
+  // Энциклопедия — навигация между видами
+  document.getElementById("enc-regions-back")?.addEventListener("click", goToMenu);
+  document.getElementById("enc-countries-back")?.addEventListener("click", encShowRegions);
+  document.getElementById("enc-detail-back")?.addEventListener("click", () => encShowCountries(encRegionKey));
   document.getElementById("end-btn").addEventListener("click", (e) => {
     e.stopPropagation();
     if (confirm(t("alert.end-early"))) endGame();

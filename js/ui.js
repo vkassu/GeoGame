@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260552";
-import { t } from "./i18n.js?v=20260552";
+import { codeToEmoji, officialName } from "./data.js?v=20260553";
+import { t } from "./i18n.js?v=20260553";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -13,7 +13,7 @@ export function showScreen(name) {
   // и финальных экранов (Result/Training/Bonus) — там свой поток выхода.
   const home = getHomeButton();
   if (home) home.hidden = (
-    name === "start" || name === "menu" ||
+    name === "start" || name === "menu" || name === "encyclopedia" ||
     name === "result" || name === "training" || name === "bonus"
   );
 }
@@ -386,26 +386,38 @@ export function markAnswer(btn, kind) {
   btn.classList.add(kind === "correct" ? "correct" : "wrong");
 }
 
-// Экран «Информация» о стране. Значения берутся из временных полей country._*,
-// которые main.js вычисляет (lang-aware) перед вызовом — UI-слой не дёргает бизнес-логику.
-export function renderInfoScreen(country, regionLabel) {
+// Рендерит карточку страны в произвольный контейнер. Единый рендерер для экрана
+// «Информация» (в игре) и «Энциклопедия» → карточка страны (вид 3).
+// Значения берутся из временных полей country._*, которые main.js вычисляет
+// (lang-aware) перед вызовом — UI-слой не дёргает бизнес-логику.
+export function renderCountryCard(country, regionLabel, container) {
+  container.innerHTML = "";
+
   // --- Флаг (локальный) ---
-  const flagEl = document.getElementById("info-flag");
-  flagEl.innerHTML = "";
+  const flagEl = document.createElement("div");
+  flagEl.className = "info-flag";
   flagEl.appendChild(localAssetImg("flags", country.cca2, "", () => { flagEl.textContent = codeToEmoji(country.cca2); }));
+  container.appendChild(flagEl);
 
   // --- Имена ---
-  document.getElementById("info-name").textContent =
-    (country._displayName) || country.cca2;
+  const nameBlock = document.createElement("div");
+  nameBlock.className = "info-name-block";
+  const nameEl = document.createElement("h2");
+  nameEl.className = "info-name";
+  nameEl.textContent = country._displayName || country.cca2;
+  nameBlock.appendChild(nameEl);
   const off = officialName(country);
-  const offEl = document.getElementById("info-official");
-  offEl.textContent = off;
-  offEl.style.display = off ? "" : "none";
+  if (off) {
+    const offEl = document.createElement("p");
+    offEl.className = "info-official";
+    offEl.textContent = off;
+    nameBlock.appendChild(offEl);
+  }
+  container.appendChild(nameBlock);
 
   // --- Строки данных ---
-  const rows = document.getElementById("info-rows");
-  rows.innerHTML = "";
-
+  const rows = document.createElement("div");
+  rows.className = "info-rows";
   function addRow(labelKey, value) {
     if (!value || value === "—") return;
     const div = document.createElement("div");
@@ -421,24 +433,79 @@ export function renderInfoScreen(country, regionLabel) {
   }
 
   addRow("info.region",     regionLabel);
-  addRow("info.capital",    country._capital   || "—");
-  addRow("info.population", country._population || "—");
-  addRow("info.area",       country._area      || "—");
-  addRow("info.language",   country._language  || "—");
-  addRow("info.currency",   country._currency  || "—");
-  if (country._nativeName) addRow("info.native", country._nativeName);
+  addRow("info.capital",    country._capital);
+  addRow("info.population", country._population);
+  addRow("info.area",       country._area);
+  addRow("info.density",    country._density);
+  addRow("info.language",   country._language);
+  addRow("info.currency",   country._currency);
+  addRow("info.religion",   country._religion);
+  addRow("info.native",     country._nativeName);
+  container.appendChild(rows);
 
   // --- Герб (локальный; наличие проверяем по URL-справочнику из countries.json) ---
-  const coaBlock = document.getElementById("info-coa-block");
-  const coaImg   = document.getElementById("info-coa-img");
   const hasCoa = !!(country.coatOfArms && country.coatOfArms.svg);
   if (hasCoa) {
-    coaBlock.style.display = "";
-    document.querySelector("[data-i18n='info.coa']").textContent = t("info.coa");
-    coaImg.innerHTML = "";
+    const coaBlock = document.createElement("div");
+    coaBlock.className = "info-coa-block";
+    const coaLabel = document.createElement("p");
+    coaLabel.className = "info-row-label";
+    coaLabel.textContent = t("info.coa");
+    const coaImg = document.createElement("div");
+    coaImg.className = "info-coa-img";
     coaImg.appendChild(localAssetImg("coats", country.cca2, "coa-img", () => { coaImg.textContent = "🏛"; }));
-  } else {
-    coaBlock.style.display = "none";
+    coaBlock.append(coaLabel, coaImg);
+    container.appendChild(coaBlock);
+  }
+}
+
+// Экран «Информация» (в игре): карточка страны в контейнер #info-card.
+export function renderInfoScreen(country, regionLabel) {
+  renderCountryCard(country, regionLabel, document.getElementById("info-card"));
+}
+
+// ---- Энциклопедия ----
+
+// Вид 1: цветные карточки регионов с числом стран.
+// items: [{ key, label, count, color }], onPick(key)
+export function renderEncRegions(items, onPick) {
+  const grid = document.getElementById("enc-region-grid");
+  grid.innerHTML = "";
+  for (const { key, label, count, color } of items) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "enc-region-card";
+    card.style.background = color;
+    const name = document.createElement("span");
+    name.className = "enc-region-name";
+    name.textContent = label;
+    const cnt = document.createElement("span");
+    cnt.className = "enc-region-count";
+    cnt.textContent = t("enc.countries-count", { n: count });
+    card.append(name, cnt);
+    card.addEventListener("click", () => onPick(key));
+    grid.appendChild(card);
+  }
+}
+
+// Вид 2: сетка стран региона. items: [{ country, name }], onPick(country)
+export function renderEncCountries(title, items, onPick) {
+  document.getElementById("enc-countries-title").textContent = title;
+  const grid = document.getElementById("enc-country-grid");
+  grid.innerHTML = "";
+  for (const { country, name } of items) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "enc-country-cell";
+    const flag = document.createElement("span");
+    flag.className = "enc-country-flag";
+    flag.appendChild(localAssetImg("flags", country.cca2, "", () => { flag.textContent = codeToEmoji(country.cca2); }));
+    const nameEl = document.createElement("span");
+    nameEl.className = "enc-country-name";
+    nameEl.textContent = name;
+    cell.append(flag, nameEl);
+    cell.addEventListener("click", () => onPick(country));
+    grid.appendChild(cell);
   }
 }
 
