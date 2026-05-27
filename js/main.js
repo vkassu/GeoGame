@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260555";
+} from "./data.js?v=20260556";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260555";
+} from "./i18n.js?v=20260556";
 import {
   showScreen,
   getPlayAgainButton,
@@ -63,11 +63,11 @@ import {
   renderTasks,
   setDailyCountdownText,
   setTasksBadge,
-} from "./ui.js?v=20260555";
+} from "./ui.js?v=20260556";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260555";
+  from "./levels.js?v=20260556";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -150,15 +150,15 @@ const TOPICS = {
     valid: hasCoatOfArms,
   },
   density: {
-    get label() { return t("topic.density.label"); },
-    get question() { return t("topic.density.question"); },
+    get label() { return TOPIC_LABELS.density[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.density[getLang()]; },
     prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: (c) => getDensityFormatted(c, getLang()),
     valid: (c) => hasDensity(c),
   },
   religion: {
-    get label() { return t("topic.religion.label"); },
-    get question() { return t("topic.religion.question"); },
+    get label() { return TOPIC_LABELS.religion[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.religion[getLang()]; },
     prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: (c) => religionName(c),
     valid: (c) => hasReligion(c),

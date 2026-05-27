@@ -8,7 +8,7 @@ export function setLang(lang) { _lang = lang; }
 // Словарь всех UI-строк
 const STRINGS = {
   ru: {
-    "status.loading": "Загрузка данных с restcountries.com…",
+    "status.loading": "Загрузка данных…",
     "status.loaded": "Загружено стран: {n}",
     "status.error": "Ошибка загрузки: {msg}",
     "regions.title": "Регионы",
@@ -28,10 +28,6 @@ const STRINGS = {
     "count.q": "{n} вопросов",
     "count.back": "Назад",
     "game.hint": "Подсказка",
-    "topic.density.label":    "Плотность",
-    "topic.density.question": "Какова плотность населения?",
-    "topic.religion.label":   "Религия",
-    "topic.religion.question":"Какая религия преобладает?",
     "game.counter": "Вопрос {i} из {n}",
     "answer.correct": "Правильный ответ",
     "answer.wrong": "Неправильный ответ",
@@ -42,11 +38,7 @@ const STRINGS = {
     "answer.end": "Конец",
     "result.title": "Игра окончена",
     "result.score": "Ты ответил правильно {score} из {total}",
-    "result.xp-earned": "Получено за партию:",
-    "result.xp-total": "XP. Всего:",
-    "result.xp-record": "Рекорд за партию:",
     "result.games": "Партий сыграно:",
-    "result.play-again": "Играть снова",
     "result.next":      "Далее",
     "result.session-xp": "За партию:",
     "result.bonus-xp":   "Бонус:",
@@ -94,7 +86,6 @@ const STRINGS = {
     "reset.confirm":  "Сбросить весь прогресс (опыт, рекорд, партии, выбор тем)? Это нельзя отменить.",
     "menu.new-game":     "Новая игра",
     "menu.encyclopedia": "Энциклопедия",
-    "menu.quests":       "Задания",
     "menu.sign-in":      "Войти",
     "menu.sign-out":     "Выйти",
     "menu.guest":        "Гость",
@@ -117,7 +108,7 @@ const STRINGS = {
     "quest.dotraining":   "Пройди обучение (не пропускай)",
   },
   en: {
-    "status.loading": "Loading data from restcountries.com…",
+    "status.loading": "Loading data…",
     "status.loaded": "Countries loaded: {n}",
     "status.error": "Loading error: {msg}",
     "regions.title": "Regions",
@@ -137,10 +128,6 @@ const STRINGS = {
     "count.q": "{n} questions",
     "count.back": "Back",
     "game.hint": "Hint",
-    "topic.density.label":    "Density",
-    "topic.density.question": "What is the population density?",
-    "topic.religion.label":   "Religion",
-    "topic.religion.question":"What is the dominant religion?",
     "game.counter": "Question {i} of {n}",
     "answer.correct": "Correct answer",
     "answer.wrong": "Wrong answer",
@@ -151,11 +138,7 @@ const STRINGS = {
     "answer.end": "End",
     "result.title": "Game over",
     "result.score": "You answered correctly {score} of {total}",
-    "result.xp-earned": "XP earned this round:",
-    "result.xp-total": "XP. Total:",
-    "result.xp-record": "Best round:",
     "result.games": "Games played:",
-    "result.play-again": "Play again",
     "result.next":      "Next",
     "result.session-xp": "Game XP:",
     "result.bonus-xp":   "Bonus:",
@@ -203,7 +186,6 @@ const STRINGS = {
     "reset.confirm":  "Reset all progress (XP, best, games, topic selection)? This cannot be undone.",
     "menu.new-game":     "New Game",
     "menu.encyclopedia": "Encyclopedia",
-    "menu.quests":       "Quests",
     "menu.sign-in":      "Sign In",
     "menu.sign-out":     "Sign Out",
     "menu.guest":        "Guest",
@@ -255,6 +237,8 @@ export const TOPIC_LABELS = {
   currency:         { ru: "Валюта",             en: "Currency" },
   nativeName:       { ru: "Самоназвание",       en: "Native name" },
   coatOfArms:       { ru: "Герб",               en: "Coat of arms" },
+  density:          { ru: "Плотность",          en: "Density" },
+  religion:         { ru: "Религия",            en: "Religion" },
 };
 
 // Язык-зависимые тексты вопросов
@@ -268,6 +252,8 @@ export const TOPIC_QUESTIONS = {
   currency:         { ru: "Какая валюта?",                               en: "What is the currency?" },
   nativeName:       { ru: "Название какой страны это на родном языке?",  en: "Which country has this native name?" },
   coatOfArms:       { ru: "Что это за страна?",                          en: "What country is this?" },
+  density:          { ru: "Какова плотность населения?",                 en: "What is the population density?" },
+  religion:         { ru: "Какая религия преобладает?",                  en: "What is the dominant religion?" },
 };
 
 // Язык-зависимые названия регионов

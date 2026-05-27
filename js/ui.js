@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260555";
-import { t } from "./i18n.js?v=20260555";
+import { codeToEmoji, officialName } from "./data.js?v=20260556";
+import { t } from "./i18n.js?v=20260556";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -43,7 +43,7 @@ export function updateHintUI(hintCharge, hintAvailable) {
   btn.disabled = !hintAvailable;
 }
 
-// Прячет 2 случайных неверных варианта из 4 (через visibility, чтобы сетка 2×2 не схлопнулась).
+// Прячет 2 случайных неверных варианта (display:none).
 export function applyHintToOptions(buttons, correctValue) {
   const wrong = buttons.filter((b) => b.value !== correctValue);
   // перемешиваем неверные и прячем первые два
@@ -66,16 +66,18 @@ export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
   document.getElementById("answer-correct-val").textContent = correctValue;
 }
 export function showAnswerResult() {
+  const game = document.getElementById("game-screen");
   document.getElementById("options").style.display = "none";
-  document.querySelector(".meta").style.display = "none";
-  document.querySelector(".progress").style.display = "none";
+  game.querySelector(".meta").style.display = "none";
+  game.querySelector(".progress").style.display = "none";
   document.getElementById("answer-result").style.display = "block";
 }
 export function hideAnswerResult() {
+  const game = document.getElementById("game-screen");
   document.getElementById("answer-result").style.display = "none";
   document.getElementById("options").style.display = "";
-  document.querySelector(".meta").style.display = "";
-  document.querySelector(".progress").style.display = "";
+  game.querySelector(".meta").style.display = "";
+  game.querySelector(".progress").style.display = "";
 }
 
 export function updateTimer(seconds) {
@@ -276,7 +278,7 @@ export function hideLevelUpBanner() {
  * @param {string} p.username        — "Гость" если нет логина
  * @param {number} p.level
  * @param {Object} p.xpProgress      — { xpInLevel, xpNeeded, percent }
- * @param {Object} p.inventory       — { hints, extraLives, chests }
+ * @param {Object} p.inventory       — { chests }
  * @param {boolean} p.isLoggedIn
  * @param {string} p.lang            — "ru" или "en"
  */

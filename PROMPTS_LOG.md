@@ -18,6 +18,56 @@
 
 ---
 
+## 2026-05-26 #32 | Техдолг: стухшие строки, мёртвые ключи, хрупкие селекторы, JSDoc
+
+**Цель:** 6 категорий рефакторинга без изменения механики.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (localhost:5500 — метки density/religion RU+EN, show/hide answer-result, консоль чистая)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+### 1. Стухшие status.loading в i18n.js
+`status.loading` (RU + EN) упоминает "restcountries.com" — API больше не используется. Заменить: RU `"Загрузка данных…"`, EN `"Loading data…"`.
+
+### 2. Дублирующий ключ menu.quests vs menu.tasks
+Grep по всем .js/.html, найти какой реально используется. Неиспользуемый удалить.
+
+### 3. Мёртвые ключи result screen в i18n.js
+Проверить grep'ом: `result.xp-earned`, `result.xp-total`, `result.xp-record`, `result.games`, `result.play-again`. Неиспользуемые удалить из STRINGS (RU + EN).
+
+### 4. Унифицировать метки тем
+Добавить density/religion в `TOPIC_LABELS` и `TOPIC_QUESTIONS`, обновить геттеры в TOPICS с `t("topic.density.label")` на `TOPIC_LABELS.density[getLang()]`. Удалить `topic.density.*` и `topic.religion.*` из STRINGS.
+
+### 5. Хрупкие DOM-селекторы в ui.js
+`showAnswerResult`/`hideAnswerResult`: заменить `document.querySelector(".meta")` и `document.querySelector(".progress")` на scope-ограниченные через `document.getElementById("game-screen").querySelector(...)` или добавить ID в index.html.
+
+### 6. Стухшие комментарии и JSDoc
+- `applyHintToOptions`: убрать упоминание "visibility" из комментария.
+- `renderMenuProfile` JSDoc: убрать `hints, extraLives` из `@param inventory`.
+- `populationFormatted`/`areaFormatted` в data.js: убрать `export` (приватные хелперы, grep перед удалением).
+
+- Cache-busting: обновить `?v=`.
+- `git add -A && git commit -m "refactor: tech debt cleanup — stale strings, dead i18n keys, fragile selectors, jsdoc"`
+
+На блокерах — стоп, спросить. Не додумывать.
+
+**Результат / расхождения:** Все 6 категорий выполнены.
+1. `status.loading` (RU/EN) → «Загрузка данных…» / «Loading data…». **Доп.:** в `index.html` статичный плейсхолдер `#status` тоже упоминал restcountries.com (тот же стухший литерал, показывается до `renderStatus()`) — заменил для согласованности.
+2. `menu.quests` — грепом подтверждено: только определялся в i18n.js, нигде не использовался (используется `menu.tasks`). Удалён (RU+EN).
+3. Из 5 ключей `result.games` **живой** (`index.html:255`, `data-i18n="result.games"`) — оставлен. Остальные 4 (`result.xp-earned`/`xp-total`/`xp-record`/`play-again`) только определялись — удалены (RU+EN).
+4. density/religion добавлены в `TOPIC_LABELS`/`TOPIC_QUESTIONS`; геттеры в `TOPICS` переведены на `TOPIC_LABELS.<key>[getLang()]`; `topic.density.*`/`topic.religion.*` удалены из STRINGS (RU+EN). Проверено: метки/вопросы рендерятся в обоих языках.
+5. `showAnswerResult`/`hideAnswerResult` — `.meta`/`.progress` теперь ищутся через `document.getElementById("game-screen").querySelector(...)`. Проверено: скрытие/восстановление работает.
+6a. Комментарий `applyHintToOptions` — упоминание visibility убрано (код использует `display:none`).
+6b. JSDoc `renderMenuProfile` — `@param inventory` теперь `{ chests }`.
+6c. `populationFormatted`/`areaFormatted` — грепом подтверждено: используются только внутри data.js (в `getPopulationFormatted`/`getAreaFormatted`), наружу не импортируются → `export` убран.
+- Cache-busting 20260555→20260556 во всех импортёрах (firebase.js без изменений — 20260538). Финальный греп: ни одного остаточного упоминания удалённых ключей в .js/.html.
+
+---
+
 ## 2026-05-26 #31 | Задания: дейлик + стрик + ежедневные квесты
 
 **Цель:** Реализовать экран «Задания» с тремя блоками: ежедневный приз (дейлик с таймером), серия дней (стрик с вехами), ежедневные задания (3 квеста из пула с прогресс-барами).

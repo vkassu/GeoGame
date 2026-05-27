@@ -1,6 +1,6 @@
 // Слой данных: загрузка стран из локального data/countries.json и геттеры полей страны.
 
-import { getLang } from "./i18n.js?v=20260555";
+import { getLang } from "./i18n.js?v=20260556";
 
 // Данные стран — локальный файл (обновляется вручную через scripts/fetch_countries.js).
 // Рантайм больше не ходит в restcountries.com: мгновенная загрузка, без внешних зависимостей.
@@ -58,8 +58,8 @@ export function capitalName(country) {
     : "";
 }
 
-// Население — форматированная строка
-export function populationFormatted(country) {
+// Население — форматированная строка (внутренний RU-only хелпер, наружу не экспортируется)
+function populationFormatted(country) {
   const n = country.population;
   if (!n) return "—";
   if (n >= 1e9) return (n / 1e9).toFixed(2).replace(".", ",") + " млрд";
@@ -68,8 +68,8 @@ export function populationFormatted(country) {
   return String(n);
 }
 
-// Площадь — форматированная строка
-export function areaFormatted(country) {
+// Площадь — форматированная строка (внутренний RU-only хелпер, наружу не экспортируется)
+function areaFormatted(country) {
   const n = country.area;
   if (!n || n <= 0) return "—";
   if (n >= 1e6) return (n / 1e6).toFixed(2).replace(".", ",") + " млн км²";
