@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260554";
-import { t } from "./i18n.js?v=20260554";
+import { codeToEmoji, officialName } from "./data.js?v=20260555";
+import { t } from "./i18n.js?v=20260555";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -14,6 +14,7 @@ export function showScreen(name) {
   const home = getHomeButton();
   if (home) home.hidden = (
     name === "start" || name === "menu" || name === "encyclopedia" ||
+    name === "tasks" ||
     name === "result" || name === "training" || name === "bonus"
   );
 }
@@ -659,4 +660,129 @@ function formatXpShort(n) {
   if (n >= 10000) return Math.round(n / 1000) + "K";
   if (n >= 1000)  return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
   return String(n);
+}
+
+// ---- Экран «Задания» ----
+
+/**
+ * Рендерит весь экран заданий из вью-модели (логика/state — в main.js).
+ * @param {Object} vm
+ * @param {Object} vm.daily   — { available, prizeXp, prizeChests, countdown }
+ * @param {Object} vm.streak  — { count, milestones: [{ days, reward, reached, current }] }
+ * @param {Array}  vm.quests  — [{ id, label, progress, goal, reward, completed, claimed }]
+ * @param {Function} onClaimDaily — () => void
+ * @param {Function} onClaimQuest — (id) => void
+ */
+export function renderTasks(vm, onClaimDaily, onClaimQuest) {
+  renderTasksDaily(document.getElementById("tasks-daily-body"), vm.daily, onClaimDaily);
+  renderTasksStreak(document.getElementById("tasks-streak-body"), vm.streak);
+  renderTasksQuests(document.getElementById("tasks-quests-body"), vm.quests, onClaimQuest);
+}
+
+function renderTasksDaily(body, daily, onClaim) {
+  body.innerHTML = "";
+  const prize = document.createElement("div");
+  prize.className = "tasks-prize-line";
+  prize.textContent = `+${daily.prizeXp} XP   +${daily.prizeChests} 🧰`;
+  body.appendChild(prize);
+
+  if (daily.available) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tasks-claim-btn";
+    btn.textContent = t("tasks.claim-daily");
+    btn.addEventListener("click", onClaim);
+    body.appendChild(btn);
+  } else {
+    const timer = document.createElement("div");
+    timer.className = "tasks-timer";
+    const label = document.createElement("span");
+    label.textContent = t("tasks.next-in") + " ";
+    const cd = document.createElement("span");
+    cd.id = "tasks-daily-countdown";
+    cd.textContent = daily.countdown;
+    timer.append(label, cd);
+    body.appendChild(timer);
+  }
+}
+
+function renderTasksStreak(body, streak) {
+  body.innerHTML = "";
+  const line = document.createElement("div");
+  line.className = "tasks-streak-line";
+  line.textContent = "🔥 " + t("tasks.streak-days", { n: streak.count });
+  body.appendChild(line);
+
+  const marks = document.createElement("div");
+  marks.className = "tasks-milestones";
+  for (const m of streak.milestones) {
+    const mk = document.createElement("div");
+    mk.className = "tasks-milestone"
+      + (m.reached ? " reached" : (m.current ? " current" : ""));
+    const days = document.createElement("span");
+    days.className = "tasks-milestone-days";
+    days.textContent = m.days;
+    const reward = document.createElement("span");
+    reward.className = "tasks-milestone-reward";
+    reward.textContent = `+${m.reward.xp} · +${m.reward.chests}🧰`;
+    mk.append(days, reward);
+    marks.appendChild(mk);
+  }
+  body.appendChild(marks);
+}
+
+function renderTasksQuests(body, quests, onClaim) {
+  body.innerHTML = "";
+  for (const q of quests) {
+    const card = document.createElement("div");
+    card.className = "tasks-quest" + (q.claimed ? " claimed" : "");
+
+    const label = document.createElement("div");
+    label.className = "tasks-quest-label";
+    label.textContent = q.label;
+    card.appendChild(label);
+
+    const row = document.createElement("div");
+    row.className = "tasks-quest-row";
+
+    const bar = document.createElement("div");
+    bar.className = "tasks-quest-bar";
+    const fill = document.createElement("div");
+    fill.className = "tasks-quest-bar-fill";
+    const pct = q.goal > 0 ? Math.min(100, (q.progress / q.goal) * 100) : 0;
+    fill.style.width = pct.toFixed(0) + "%";
+    bar.appendChild(fill);
+
+    const prog = document.createElement("span");
+    prog.className = "tasks-quest-prog";
+    prog.textContent = Math.min(q.progress, q.goal) + "/" + q.goal;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tasks-quest-btn";
+    if (q.claimed) {
+      btn.textContent = t("tasks.claimed");
+      btn.disabled = true;
+    } else {
+      btn.textContent = t("tasks.claim") + " +" + q.reward;
+      btn.disabled = !q.completed;
+      if (q.completed) btn.addEventListener("click", () => onClaim(q.id));
+    }
+
+    row.append(bar, prog, btn);
+    card.appendChild(row);
+    body.appendChild(card);
+  }
+}
+
+// Обновить только текст обратного таймера дейлика (вызывается из setInterval).
+export function setDailyCountdownText(str) {
+  const el = document.getElementById("tasks-daily-countdown");
+  if (el) el.textContent = str;
+}
+
+// Показать/скрыть бейдж-уведомление на кнопке «Задания» в меню.
+export function setTasksBadge(show) {
+  const badge = document.getElementById("menu-tasks-badge");
+  if (badge) badge.hidden = !show;
 }

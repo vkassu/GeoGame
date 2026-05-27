@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
-  <link rel="stylesheet" href="css/style.css?v=20260554">
+  <link rel="stylesheet" href="css/style.css?v=20260555">
 </head>
 <body>
   <header class="topbar">
@@ -57,8 +57,10 @@
         <div class="menu-btn-row">
           <button type="button" class="menu-btn menu-btn-half" id="menu-encyclopedia-btn"
                   data-i18n="menu.encyclopedia">Энциклопедия</button>
-          <button type="button" class="menu-btn menu-btn-half" id="menu-quests-btn"
-                  data-i18n="menu.quests">Задания</button>
+          <button type="button" class="menu-btn menu-btn-half" id="menu-quests-btn">
+            <span data-i18n="menu.tasks">Задания</span>
+            <span id="menu-tasks-badge" class="menu-badge" hidden></span>
+          </button>
         </div>
 
         <div class="menu-btn-row">
@@ -217,6 +219,33 @@
       </div>
     </section>
 
+    <!-- Экран «Задания» (дейлик + стрик + ежедневные квесты) -->
+    <section id="tasks-screen" class="screen">
+      <h2 data-i18n="menu.tasks">Задания</h2>
+
+      <!-- Блок 1: Ежедневный приз -->
+      <div class="tasks-card">
+        <h3 class="tasks-card-title" data-i18n="tasks.daily-prize">Ежедневный приз</h3>
+        <div id="tasks-daily-body"></div>
+      </div>
+
+      <!-- Блок 2: Серия -->
+      <div class="tasks-card">
+        <h3 class="tasks-card-title">🔥 <span data-i18n="tasks.streak">Серия</span></h3>
+        <div id="tasks-streak-body"></div>
+      </div>
+
+      <!-- Блок 3: Задания дня -->
+      <div class="tasks-card">
+        <h3 class="tasks-card-title" data-i18n="tasks.daily-quests">Задания дня</h3>
+        <div id="tasks-quests-body"></div>
+      </div>
+
+      <div class="setup-nav" style="margin-top:16px">
+        <button type="button" class="nav-btn" id="tasks-back" data-i18n="enc.back">← Назад</button>
+      </div>
+    </section>
+
     <section id="result-screen" class="screen">
       <h2 data-i18n="result.title">Игра окончена</h2>
       <p class="result-text" id="result-text"></p>
@@ -286,6 +315,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260554"></script>
+  <script type="module" src="js/main.js?v=20260555"></script>
 </body>
 </html>

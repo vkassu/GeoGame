@@ -1125,3 +1125,158 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   color: #2c7be5;
   margin: 0;
 }
+
+/* ---- Экран «Задания» ---- */
+.tasks-card {
+  text-align: left;
+  margin: 0 0 14px;
+  padding: 16px 18px;
+  background: #f7fafc;
+  border: 1px solid #e3e8ee;
+  border-radius: 12px;
+}
+.tasks-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #1a1a1a;
+}
+
+/* Блок 1: дейлик */
+.tasks-prize-line {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c7be5;
+  margin-bottom: 10px;
+}
+.tasks-claim-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, #4a9eff, #2c7be5);
+  box-shadow: 0 2px 6px rgba(44,123,229,.35);
+}
+.tasks-claim-btn:hover { filter: brightness(1.05); }
+.tasks-timer {
+  font-size: 15px;
+  color: #555;
+  font-weight: 600;
+}
+.tasks-timer #tasks-daily-countdown {
+  font-variant-numeric: tabular-nums;
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+/* Блок 2: стрик */
+.tasks-streak-line {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1a1a1a;
+}
+.tasks-milestones {
+  display: flex;
+  gap: 8px;
+}
+.tasks-milestone {
+  flex: 1;
+  text-align: center;
+  padding: 10px 4px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  background: #e9edf2;
+  color: #9aa6b2;
+  border: 2px solid transparent;
+}
+.tasks-milestone .tasks-milestone-days { font-size: 16px; }
+.tasks-milestone .tasks-milestone-reward { font-size: 11px; font-weight: 600; display: block; margin-top: 2px; }
+.tasks-milestone.reached {
+  background: #eaf7ea;
+  color: #2a9d2a;
+  border-color: #2ecc40;
+}
+.tasks-milestone.current {
+  background: #fff6e5;
+  color: #d98a00;
+  border-color: #f0b429;
+}
+
+/* Блок 3: задания дня */
+.tasks-quest {
+  padding: 10px 0;
+  border-bottom: 1px solid #e8eaed;
+}
+.tasks-quest:last-child { border-bottom: none; }
+.tasks-quest-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+}
+.tasks-quest.claimed .tasks-quest-label {
+  text-decoration: line-through;
+  color: #9aa6b2;
+}
+.tasks-quest-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tasks-quest-bar {
+  flex: 1;
+  height: 8px;
+  background: #e3e8ee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tasks-quest-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #2c7be5);
+  border-radius: 4px;
+  transition: width .3s;
+}
+.tasks-quest-prog {
+  font-size: 12px;
+  color: #888;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  min-width: 44px;
+  text-align: right;
+}
+.tasks-quest-btn {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, #34c759, #28a745);
+}
+.tasks-quest-btn:disabled {
+  background: #d7dde3;
+  color: #9aa6b2;
+  cursor: default;
+}
+
+/* Бейдж-уведомление на кнопке «Задания» в меню */
+.menu-badge {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #e53935;
+  vertical-align: middle;
+  box-shadow: 0 0 0 2px rgba(229,57,53,.25);
+}
+.menu-badge[hidden] { display: none; }
