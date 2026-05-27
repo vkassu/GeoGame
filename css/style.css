@@ -739,12 +739,27 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   background: #e3e8ee;
   border-radius: 7px;
   overflow: hidden;
+  display: flex;            /* старый + новый сегменты идут встык */
 }
 .xp-bar-fill {
   height: 100%;
   background: #4caf50;
   border-radius: 7px;
   width: 0%;
+  transition: none; /* анимируем через JS */
+}
+/* Двухцветный бар на result: старый XP (светло-зелёный, статичный) + новый (жёлто-зелёный, анимируется) */
+.xp-bar-old {
+  height: 100%;
+  width: 0%;
+  background: #c8e6c9;   /* светло-зелёный — опыт до сессии */
+  flex: 0 0 auto;
+}
+.xp-bar-new {
+  height: 100%;
+  width: 0%;
+  background: #aacc00;   /* жёлто-зелёный — новый опыт за сессию */
+  flex: 0 0 auto;
   transition: none; /* анимируем через JS */
 }
 .xp-bar-caption {

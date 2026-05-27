@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260551";
-import { t } from "./i18n.js?v=20260551";
+import { codeToEmoji, officialName } from "./data.js?v=20260552";
+import { t } from "./i18n.js?v=20260552";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -186,31 +186,36 @@ export function renderTopicList(items, topicDifficulties, getUnlocked, onSelect)
  * Рендерит XP-бар в статичном виде (без анимации).
  * xpProgress: { level, xpInLevel, xpNeeded, percent }
  */
+// Статичный рендер (стартовое состояние): весь прогресс показываем как «старый»
+// (светло-зелёный), новый сегмент = 0.
 export function renderXPBar(xpProgress) {
   const { level, xpInLevel, xpNeeded, percent } = xpProgress;
   document.getElementById("xp-level-from").textContent = String(level);
   document.getElementById("xp-level-to").textContent = String(level + 1);
-  document.getElementById("xp-bar-fill").style.width = (percent * 100).toFixed(1) + "%";
+  document.getElementById("xp-bar-old").style.width = (percent * 100).toFixed(1) + "%";
+  document.getElementById("xp-bar-new").style.width = "0%";
   document.getElementById("xp-bar-caption").textContent =
     xpInLevel + " / " + xpNeeded + " XP";
 }
 
 /**
- * Анимирует заполнение XP-бара от startXP до endXP.
+ * Анимирует заполнение XP-бара от startXP до endXP двумя сегментами:
+ *  - старый (светло-зелёный) = прогресс до сессии (статичен, в текущем уровне);
+ *  - новый (жёлто-зелёный) = заработанное за сессию, анимируется.
+ * При level-up старый сегмент обнуляется (на новом уровне «до сессии» прогресса нет).
  * getXPProgress принимается параметром, чтобы не создавать зависимость ui.js → levels.js.
- * @param {number} startXP
- * @param {number} endXP
- * @param {Function} getXPProgress  — (xp) => { level, xpInLevel, xpNeeded, percent }
- * @param {Function} onLevelUp      — (newLevel) => void
- * @param {number} durationMs       — длительность анимации, default 1200
+ * @param {number} durationMs — длительность анимации, default 2400 (×2 от прежних 1200)
  */
-export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationMs = 1200) {
-  const fill = document.getElementById("xp-bar-fill");
+export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationMs = 2400) {
+  const oldEl = document.getElementById("xp-bar-old");
+  const newEl = document.getElementById("xp-bar-new");
   const caption = document.getElementById("xp-bar-caption");
   const levelFrom = document.getElementById("xp-level-from");
   const levelTo = document.getElementById("xp-level-to");
 
-  let lastFiredLevel = getXPProgress(startXP).level;
+  const startLevel = getXPProgress(startXP).level;
+  const startPercent = getXPProgress(startXP).percent; // «старый» прогресс в стартовом уровне
+  let lastFiredLevel = startLevel;
   const start = performance.now();
 
   function tick(now) {
@@ -220,9 +225,15 @@ export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationM
     const currentXP = Math.round(startXP + (endXP - startXP) * eased);
     const prog = getXPProgress(currentXP);
 
+    // Старый сегмент: если ещё в стартовом уровне — это докризисный прогресс; после
+    // перехода уровня старого прогресса в новом уровне нет (всё «новое»).
+    const oldPercent = prog.level === startLevel ? startPercent : 0;
+    const newPercent = Math.max(0, prog.percent - oldPercent);
+
     levelFrom.textContent = String(prog.level);
     levelTo.textContent = String(prog.level + 1);
-    fill.style.width = (prog.percent * 100).toFixed(1) + "%";
+    oldEl.style.width = (oldPercent * 100).toFixed(1) + "%";
+    newEl.style.width = (newPercent * 100).toFixed(1) + "%";
     caption.textContent = prog.xpInLevel + " / " + prog.xpNeeded + " XP";
 
     if (prog.level > lastFiredLevel) {

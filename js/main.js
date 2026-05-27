@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260551";
+} from "./data.js?v=20260552";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260551";
+} from "./i18n.js?v=20260552";
 import {
   showScreen,
   getPlayAgainButton,
@@ -50,7 +50,6 @@ import {
   renderAvailableCount,
   setNavButtonEnabled,
   renderInfoScreen,
-  renderXPBar,
   animateXPBar,
   showLevelUpBanner,
   hideLevelUpBanner,
@@ -58,11 +57,11 @@ import {
   renderTrainingScreen,
   renderBonusGrid,
   revealBonusGrid,
-} from "./ui.js?v=20260551";
+} from "./ui.js?v=20260552";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260551";
+  from "./levels.js?v=20260552";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
