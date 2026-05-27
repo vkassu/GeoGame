@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260553";
+} from "./data.js?v=20260554";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260553";
+} from "./i18n.js?v=20260554";
 import {
   showScreen,
   getPlayAgainButton,
@@ -60,11 +60,11 @@ import {
   renderTrainingScreen,
   renderBonusGrid,
   revealBonusGrid,
-} from "./ui.js?v=20260553";
+} from "./ui.js?v=20260554";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260553";
+  from "./levels.js?v=20260554";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -879,16 +879,16 @@ function skipTraining() {
 // ---------- Бонус ----------
 
 const BONUS_GRID_SIZE = 25;
-// Распределение призов: 20 XP / 5 сундуков.
+// Распределение призов: 15 XP / 10 сундуков.
 const BONUS_PRIZE_POOL = [
-  ...Array(20).fill("xp"),
-  ...Array(5).fill("chest"),
+  ...Array(15).fill("xp"),
+  ...Array(10).fill("chest"),
 ];
 
-// Генерируем приз заданного типа. XP — 25..200% от sessionXP (минимум 25 XP); сундук — 1..3 шт.
+// Генерируем приз заданного типа. XP — 25..200% от sessionXP (минимум 25 XP); сундук — 3..5 шт.
 function generatePrize(type, sessionXp) {
   if (type === "chest") {
-    return { type: "chest", amount: 1 + Math.floor(Math.random() * 3) }; // 1..3
+    return { type: "chest", amount: 3 + Math.floor(Math.random() * 3) }; // 3..5
   }
   // По умолчанию — XP.
   const base = Math.max(sessionXp, 50); // если сессия пустая — даём хоть что-то
