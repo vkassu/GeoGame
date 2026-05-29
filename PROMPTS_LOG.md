@@ -18,6 +18,94 @@
 
 ---
 
+## 2026-05-29 #39 | Фикс: суммарный XP-бонус не учитывает volume-достижения + стale меню
+
+**Цель:** Все звёздочки достижений (region, topic, volume) дают +1% XP; бонус-строка в меню обновляется мгновенно.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (localhost:5500 — меню показывает +2% при volume:games L1 + topic:country L1; data-layer проверен в Node)
+
+**Автор промпта:** Cowork
+
+**Корень проблемы:**
+
+Игрок видит 5 заполненных ★ на экране достижений (например, 4 звезды у «Путешественника» `volume:games` + 1 звезда у «Флаговеда` `topic:country`), но суммарный бонус показывает +1%. Причина: `volume:games` и `volume:xp` имеют `xpBonusPerLevel: 0`, то есть их звёзды в бонус не идут. Второй баг: `handleNewAchievementLevels` не вызывает `refreshMenuScreen()`, из-за чего строка «🎯 +N% к XP» в профиле меню остаётся устаревшей до возврата в меню.
+
+**Промпт:**
+
+## 1. `js/achievements.js` — дать volume-достижениям XP-бонус
+
+Изменить объявление `volume:games` и `volume:xp`: установить `xpBonusPerLevel: 1`.
+
+```js
+// было:
+ACHIEVEMENT_DEFS["volume:games"] = {
+  category: "volume", ..., xpBonusPerLevel: 0, chestRewards: GAMES_CHESTS,
+};
+ACHIEVEMENT_DEFS["volume:xp"] = {
+  category: "volume", ..., xpBonusPerLevel: 0, chestRewards: XP_CHESTS,
+};
+
+// стало:
+ACHIEVEMENT_DEFS["volume:games"] = {
+  category: "volume", ..., xpBonusPerLevel: 1, chestRewards: GAMES_CHESTS,
+};
+ACHIEVEMENT_DEFS["volume:xp"] = {
+  category: "volume", ..., xpBonusPerLevel: 1, chestRewards: XP_CHESTS,
+};
+```
+
+`mastery`-достижения оставить с `xpBonusPerLevel: 0` — они одноуровневые, дают сундуки, и отображаются как ✅/🔒 (не звёзды), поэтому в бонус не входят.
+
+Обновить комментарий в файле:
+```js
+// Все достижения с xpBonusPerLevel > 0 (region, topic, volume) дают +1% к XP за каждый уровень.
+// Mastery — одноуровневые, дают сундуки, XP-бонуса не дают.
+```
+
+## 2. `js/main.js` — вызвать `refreshMenuScreen()` после новых уровней достижений
+
+В функции `handleNewAchievementLevels`, в самом конце (после `setAchievementsBadge(true)` и запуска `drainAchievementQueue`), добавить:
+
+```js
+refreshMenuScreen(); // обновить бонус-строку в профиле немедленно
+```
+
+Полный конец функции после правки:
+```js
+  persistAchievements();
+  persistInventory();
+  localStorage.setItem(STORAGE.achievementsNew, "true");
+  setAchievementsBadge(true);
+  if (!achievementPopupActive) drainAchievementQueue();
+  refreshMenuScreen(); // ← добавить
+```
+
+## 3. Версионирование
+
+Поднять версию в импорте `achievements.js` в `main.js` (чтобы браузер не грузил старый кэш):
+```js
+import { ... } from "./achievements.js?v=20260562";
+```
+
+## 4. Проверка
+
+1. Открыть DevTools → Application → localStorage, удалить `geogame:achievements` (чистый старт).
+2. Сыграть 1 партию (volume:games достигает порога 1 → уровень 1 → ★).
+3. Ответить правильно 10 раз по теме «Флаги» (topic:country уровень 1 → ★).
+4. Открыть «Достижения» → «Путешественник» показывает ★☆☆... (+1%), «Флаговед» показывает ★☆☆... (+1%). Суммарный бонус в шапке: «Суммарный бонус: +2% к XP».
+5. Вернуться в меню → профиль показывает «🎯 +2% к XP» (БЕЗ перезагрузки страницы).
+6. Получить ещё одно достижение во время партии → бонус-строка в меню обновляется сразу при возврате в меню (не нужно перезапускать игру).
+
+**Результат / расхождения:** Выполнено по спеке, расхождений нет.
+- `js/achievements.js`: `volume:games` и `volume:xp` → `xpBonusPerLevel: 1` (mastery остался `0`). Шапочный комментарий обновлён на «Все достижения с xpBonusPerLevel > 0 (region, topic, volume) дают +1% к XP за каждый уровень. Mastery — одноуровневые, дают сундуки, XP-бонуса не дают.» `getAchievementBonus` уже суммировал любые def с `xpBonusPerLevel > 0`, поэтому volume подхватился автоматически без правок логики.
+- `js/main.js`: в конец `handleNewAchievementLevels` добавлена строка `refreshMenuScreen();` (функция — hoisted declaration, в области видимости).
+- Версия cache-busting поднята **20260561 → 20260562** во всех импортёрах (main.js, ui.js, data.js) + `css`/`script` в index.html. `firebase.js` остался на `20260538` (единственный импортёр, без i18n-зависимости).
+- Проверка: (а) Node — `initAchievements` + `volume:games` прогресс 1 (L1) + `topic:country` прогресс 10 (L1) → `getAchievementBonus = 2`, mastery `xpBonusPerLevel = 0`. (б) Браузер — посеял те же достижения в localStorage, перезагрузил: меню показывает «🎯 +2% к XP» (до фикса было бы +1%), консоль чистая, грузится `main.js?v=20260562`. Полный игровой прогон 10 правильных ответов не гонял — суммирование бонуса детерминировано и покрыто Node-тестом.
+
+---
+
 ## 2026-05-29 #38 | Попап достижений + XP-анимация при получении наград
 
 **Цель:** Каждое новое достижение встречается отдельным поздравительным попапом с анимацией и звуком; получение награды в заданиях сопровождается анимацией XP-бара.

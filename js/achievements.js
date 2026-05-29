@@ -1,6 +1,6 @@
 // Система достижений — data-layer (без DOM и без игрового state).
-// Каждый уровень достижения из категорий region/topic даёт +1% к любому XP.
-// Volume/mastery дают сундуки, но не XP-бонус.
+// Все достижения с xpBonusPerLevel > 0 (region, topic, volume) дают +1% к XP за каждый уровень.
+// Mastery — одноуровневые, дают сундуки, XP-бонуса не дают.
 
 // Пороги прогресса для уровней 1–10 (категории region и topic).
 export const MULTI_THRESHOLDS = [10, 25, 50, 100, 200, 350, 500, 750, 1000, 1500];
@@ -56,11 +56,11 @@ addMulti("topic:religion",         "topic", "Теолог",     "Theologian");
 // --- Категория volume (2) ---
 ACHIEVEMENT_DEFS["volume:games"] = {
   category: "volume", name: { ru: "Путешественник", en: "Traveler" }, icon: ACH_CATEGORY_ICON.volume,
-  maxLevel: 10, thresholds: GAMES_THRESHOLDS, xpBonusPerLevel: 0, chestRewards: GAMES_CHESTS,
+  maxLevel: 10, thresholds: GAMES_THRESHOLDS, xpBonusPerLevel: 1, chestRewards: GAMES_CHESTS,
 };
 ACHIEVEMENT_DEFS["volume:xp"] = {
   category: "volume", name: { ru: "Эрудит", en: "Scholar" }, icon: ACH_CATEGORY_ICON.volume,
-  maxLevel: 10, thresholds: XP_VOL_THRESHOLDS, xpBonusPerLevel: 0, chestRewards: XP_CHESTS,
+  maxLevel: 10, thresholds: XP_VOL_THRESHOLDS, xpBonusPerLevel: 1, chestRewards: XP_CHESTS,
 };
 
 // --- Категория mastery (6, одноуровневые) ---
