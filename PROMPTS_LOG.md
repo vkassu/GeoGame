@@ -18,6 +18,533 @@
 
 ---
 
+## 2026-05-29 #38 | Попап достижений + XP-анимация при получении наград
+
+**Цель:** Каждое новое достижение встречается отдельным поздравительным попапом с анимацией и звуком; получение награды в заданиях сопровождается анимацией XP-бара.
+
+**Статус:** передан
+
+**Проверено в браузере:** нет
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+## 1. Попап достижения
+
+### 1.1 HTML — новый оверлей
+
+```html
+<div id="achievement-popup" class="achievement-popup" style="display:none">
+  <div class="achievement-popup__card">
+    <div class="achievement-popup__confetti" id="ach-confetti"></div>
+    <div class="achievement-popup__icon" id="ach-icon">🏆</div>
+    <div class="achievement-popup__title" data-i18n="ach.popup.title">Новое достижение!</div>
+    <div class="achievement-popup__name" id="ach-name"></div>
+    <div class="achievement-popup__level" id="ach-level"></div>
+    <div class="achievement-popup__reward" id="ach-reward"></div>
+    <button class="achievement-popup__btn" id="ach-next-btn" data-i18n="ach.popup.next">Далее</button>
+  </div>
+</div>
+```
+
+Вставить прямо перед закрывающим `</body>`, поверх всего (z-index высокий).
+
+### 1.2 CSS
+
+```css
+.achievement-popup {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  animation: ach-fade-in 0.25s ease;
+}
+@keyframes ach-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.achievement-popup__card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  animation: ach-pop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+  overflow: hidden;
+}
+@keyframes ach-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.achievement-popup__icon  { font-size: 56px; margin-bottom: 8px; }
+.achievement-popup__title { font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; }
+.achievement-popup__name  { font-size: 22px; font-weight: 700; margin: 8px 0 4px; }
+.achievement-popup__level { font-size: 14px; color: #f59e0b; margin-bottom: 8px; } /* звёзды */
+.achievement-popup__reward{ font-size: 15px; color: #10b981; font-weight: 600; margin-bottom: 20px; }
+.achievement-popup__btn   { /* такой же стиль, как основные кнопки игры */ }
+.achievement-popup__confetti { position: absolute; inset: 0; pointer-events: none; }
+```
+
+### 1.3 Конфетти — чистый Canvas JS (без библиотек)
+
+Маленький модуль прямо в `ui.js` или inline в `main.js`. При открытии попапа запускать `startConfetti(canvasEl)`, при закрытии — `stopConfetti()`. Реализация: 60 частиц, случайные цвета (`#f59e0b`, `#10b981`, `#3b82f6`, `#ef4444`, `#a855f7`), падают вниз, лёгкое покачивание. `requestAnimationFrame`-цикл, который сам завершается через 3 секунды.
+
+```js
+function startConfetti(canvas) {
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const particles = Array.from({ length: 60 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    r: Math.random() * 6 + 3,
+    color: ['#f59e0b','#10b981','#3b82f6','#ef4444','#a855f7'][Math.floor(Math.random()*5)],
+    speed: Math.random() * 2 + 1,
+    swing: Math.random() * 2 - 1,
+    angle: 0,
+  }));
+  let frame;
+  const end = Date.now() + 3000;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.angle += 0.05;
+      p.x += Math.sin(p.angle) * p.swing;
+      p.y += p.speed;
+      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r, p.r / 2, p.angle, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (Date.now() < end) frame = requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
+  return () => cancelAnimationFrame(frame);
+}
+```
+
+### 1.4 Звук — Web Audio API (без внешних файлов)
+
+```js
+function playAchievementSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Три восходящих ноты: C5 → E5 → G5
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0.4, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.start(start); osc.stop(start + 0.35);
+    });
+  } catch (e) { /* браузер без Web Audio — молча игнорировать */ }
+}
+```
+
+### 1.5 Очередь и показ попапа
+
+В `main.js` добавить:
+```js
+state.achievementQueue = []; // { name, levelStr, rewardStr, icon }
+let achievementPopupActive = false;
+```
+
+Функция `enqueueAchievementPopup(items)` — пушит в очередь и запускает `drainAchievementQueue()` если попап не активен.
+
+`drainAchievementQueue()`:
+```js
+function drainAchievementQueue() {
+  if (!state.achievementQueue.length) { achievementPopupActive = false; return; }
+  achievementPopupActive = true;
+  const item = state.achievementQueue.shift();
+  showAchievementPopup(item); // функция в ui.js
+}
+```
+
+`showAchievementPopup(item)` (ui.js):
+- Заполняет `#ach-icon`, `#ach-name`, `#ach-level` (звёзды: «★★☆☆☆...»), `#ach-reward`
+- Запускает конфетти и звук
+- Показывает попап
+
+Кнопка «Далее» (`#ach-next-btn`) → скрыть попап → `drainAchievementQueue()`.
+
+### 1.6 Интеграция с `handleNewAchievementLevels`
+
+Заменить `// показать бейдж` → добавить в очередь:
+
+```js
+function handleNewAchievementLevels(newLevels) {
+  for (const { key, newLevel, reward } of newLevels) {
+    const def = ACHIEVEMENT_DEFS[key];
+    const name = getLang() === 'ru' ? def.nameRu : def.nameEn;
+    const stars = '★'.repeat(newLevel) + '☆'.repeat((def.maxLevel || 1) - newLevel);
+    const rewardStr = reward?.chests ? `+${reward.chests} 🧰` : (def.xpBonusPerLevel ? `+${newLevel * def.xpBonusPerLevel}% к XP` : '');
+    state.achievementQueue.push({ icon: def.icon || '🏆', name, levelStr: `Уровень ${newLevel}  ${stars}`, rewardStr });
+    if (reward?.chests) state.inventory.chests += reward.chests;
+  }
+  persistAchievements(); persistInventory();
+  localStorage.setItem('geogame:achievements-new', 'true');
+  setAchievementsBadge(true);
+  enqueueAchievementPopup([]); // запустить очередь (items уже добавлены выше)
+}
+```
+
+**Таймер во время партии:** если попап появляется в активной игре (во время `#game-screen`), остановить игровой таймер перед показом и возобновить после нажатия «Далее». Обернуть `drainAchievementQueue` в проверку: если `state.phase === 'game'` → `clearInterval(timerInterval)` перед показом, `resumeTimer()` после.
+
+### 1.7 `i18n.js`
+
+```js
+'ach.popup.title': { ru: 'Новое достижение!', en: 'Achievement Unlocked!' },
+'ach.popup.next':  { ru: 'Далее',             en: 'Next' },
+```
+
+---
+
+## 2. XP-анимация при получении награды в заданиях
+
+### 2.1 HTML — оверлей XP-награды
+
+```html
+<div id="xp-reward-popup" class="xp-reward-popup" style="display:none">
+  <div class="xp-reward-popup__card">
+    <div class="xp-reward-popup__amount" id="xpr-amount">+50 XP</div>
+    <div class="xp-reward-popup__bonus"  id="xpr-bonus"></div>
+    <div class="xp-bar-wrap" style="margin:16px 0">
+      <div class="xp-bar-bg">
+        <div class="xp-bar-old" id="xpr-bar-old"></div>
+        <div class="xp-bar-new" id="xpr-bar-new"></div>
+      </div>
+      <div class="xp-bar-label" id="xpr-bar-label"></div>
+    </div>
+    <div class="xp-reward-popup__levelup" id="xpr-levelup" style="display:none">🎉 Новый уровень!</div>
+    <button id="xpr-ok-btn" data-i18n="common.ok">OK</button>
+  </div>
+</div>
+```
+
+Тот же стиль, что и `#achievement-popup` (белая карточка, затемнённый фон, анимация pop).
+
+### 2.2 Функция `showXpRewardPopup(opts)` в `ui.js`
+
+```js
+showXpRewardPopup({
+  earnedXp: 75,         // сколько XP начислено (уже с бонусом)
+  bonusPercent: 12,     // суммарный % бонуса достижений (0 = не показывать строку)
+  xpBefore: 1340,       // xpTotal ДО начисления
+  xpAfter: 1415,        // xpTotal ПОСЛЕ
+  getXPProgress,        // функция из levels.js
+})
+```
+
+Логика:
+- Показать «+75 XP» в `#xpr-amount`
+- Если `bonusPercent > 0`: показать «+12% бонус достижений» в `#xpr-bonus` (зелёный)
+- Запустить `animateXPBar(xpBefore, xpAfter, getXPProgress, onLevelUp, 1200)` на барах `#xpr-bar-old` / `#xpr-bar-new` (переиспользовать существующую функцию, но передавать ей конкретные элементы — или сделать вариант с селектором)
+- При `onLevelUp` показать `#xpr-levelup`
+
+Кнопка «OK» закрывает попап.
+
+### 2.3 Интеграция в `main.js`
+
+В `claimDailyPrize` и `claimQuest`, после начисления XP:
+
+```js
+const xpBefore = state.xpTotal; // сохранить ДО начисления
+const bonus = getAchievementBonus(state.achievements);
+const earned = applyBonus(baseXp, bonus);
+state.xpTotal += earned;
+// ... persist ...
+showXpRewardPopup({
+  earnedXp: earned,
+  bonusPercent: bonus,
+  xpBefore,
+  xpAfter: state.xpTotal,
+  getXPProgress,
+});
+```
+
+---
+
+## 3. Проверка
+
+1. Сыграть 10 правильных ответов о странах Европы → появляется попап «Новое достижение! Знаток Европы — Уровень 1 ★☆☆☆... +1% к XP», конфетти падает, звук играет, кнопка «Далее» закрывает.
+2. Если два достижения разблокированы одновременно — показываются по очереди (второй попап после нажатия «Далее» на первом).
+3. Нажать «Получить» на дейлике → появляется оверлей «+75 XP», XP-бар анимируется, при переходе уровня показывается «🎉 Новый уровень!».
+4. Попап достижения во время игры → таймер паузится → «Далее» → таймер продолжается.
+
+---
+
+## 2026-05-29 #37 | Задания: тиры сложности + стрик UX
+
+**Цель:** Переработать экран заданий: три уровня сложности квестов (бронза/серебро/золото), единый сброс в полночь, понятный UI стрика с явными наградами.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (localhost:5500 — 3+2+1 тиры, 7 хуков, claim наград, дейт-сброс дейлика, таймеры, milestone-карточки, RU/EN)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+## 1. Единый сброс в полночь
+
+Сейчас ежедневный приз использует 24-часовой кулдаун (`Date.now() - lastClaim < 86400000`). Заменить на дату: хранить не таймстамп, а строку `YYYY-MM-DD`. Если `lastClaimDate === today` → кулдаун; иначе → доступно. Это же правило уже используется для квестов (`stored.date`) — унифицируем.
+
+Функция `getTodayString()`:
+```js
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10); // "2026-05-29"
+}
+```
+
+Изменить в `claimDailyPrize`:
+```js
+// было: { lastClaim: Date.now() }
+// стало:
+{ lastClaimDate: getTodayString() }
+```
+
+Изменить проверку кулдауна дейлика:
+```js
+const available = stored.lastClaimDate !== getTodayString();
+```
+
+Таймер до полуночи (функция `getMsUntilMidnight`):
+```js
+function getMsUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  return midnight - now;
+}
+```
+
+Таймер на экране заданий (`setInterval` пока экран открыт) показывает «Обновление через HH:MM:SS» для дейлика, если он уже получен. Для квестов — тот же таймер (один на весь экран, под заголовком или в шапке секции квестов).
+
+---
+
+## 2. Квесты: три тира сложности
+
+### 2.1 Пулы квестов
+
+Заменить плоский `QUEST_POOL` на три отдельных пула. Каждый пул — 6 квестов.
+
+**Лёгкие квесты** (`QUEST_POOL_EASY`, 6 штук):
+
+| id | RU | EN | hook | goal |
+|---|---|---|---|---|
+| `easy:play1game` | Сыграй 1 партию | Play 1 game | `games` | 1 |
+| `easy:correct5` | Дай 5 правильных ответов | Give 5 correct answers | `correct_any` | 5 |
+| `easy:earn30xp` | Заработай 30 XP | Earn 30 XP | `xp` | 30 |
+| `easy:play10q` | Сыграй партию из 10 вопросов | Play a 10-question game | `questions_in_game` | 10 |
+| `easy:streak3` | Ответь верно 3 раза подряд | Answer 3 in a row | `streak` | 3 |
+| `easy:flags3` | Угадай 3 флага | Identify 3 flags | `correct_topic:country` | 3 |
+
+Награда за лёгкое задание: **25 XP + 1 🧰**
+
+**Средние квесты** (`QUEST_POOL_MEDIUM`, 6 штук):
+
+| id | RU | EN | hook | goal |
+|---|---|---|---|---|
+| `medium:play2games` | Сыграй 2 партии | Play 2 games | `games` | 2 |
+| `medium:correct15` | Дай 15 правильных ответов | Give 15 correct answers | `correct_any` | 15 |
+| `medium:earn100xp` | Заработай 100 XP | Earn 100 XP | `xp` | 100 |
+| `medium:streak8` | Ответь верно 8 раз подряд | Answer 8 in a row | `streak` | 8 |
+| `medium:capitals5` | Назови 5 столиц | Name 5 capitals | `correct_topic:capital` | 5 |
+| `medium:play25q` | Сыграй партию из 25 вопросов | Play a 25-question game | `questions_in_game` | 25 |
+
+Награда за среднее задание: **75 XP + 3 🧰**
+
+**Тяжёлые квесты** (`QUEST_POOL_HARD`, 6 штук):
+
+| id | RU | EN | hook | goal |
+|---|---|---|---|---|
+| `hard:play3games` | Сыграй 3 партии | Play 3 games | `games` | 3 |
+| `hard:correct30` | Дай 30 правильных ответов | Give 30 correct answers | `correct_any` | 30 |
+| `hard:earn300xp` | Заработай 300 XP | Earn 300 XP | `xp` | 300 |
+| `hard:streak15` | Ответь верно 15 раз подряд | Answer 15 in a row | `streak` | 15 |
+| `hard:play50q` | Сыграй партию из 50 вопросов | Play a 50-question game | `questions_in_game` | 50 |
+| `hard:multitopic` | Сыграй с 4+ темами одновременно | Play with 4+ topics at once | `topics_in_game` | 4 |
+
+Награда за тяжёлое задание: **200 XP + 8 🧰**
+
+### 2.2 Выбор квестов на день
+
+```js
+function getTodayQuests() {
+  const day = getDayOfYear(); // существующая функция
+  // 3 лёгких: разнесённые индексы, чтобы не повторялись
+  const easy = [
+    QUEST_POOL_EASY[day % 6],
+    QUEST_POOL_EASY[(day + 2) % 6],
+    QUEST_POOL_EASY[(day + 4) % 6],
+  ];
+  // 2 средних
+  const medium = [
+    QUEST_POOL_MEDIUM[day % 6],
+    QUEST_POOL_MEDIUM[(day + 3) % 6],
+  ];
+  // 1 тяжёлое
+  const hard = [QUEST_POOL_HARD[day % 6]];
+  return [...easy, ...medium, ...hard];
+}
+```
+
+Хранить в `geogame:daily-quests` тот же формат: `{ date: getTodayString(), quests: [{id, progress, claimed}] }`. При смене даты — пересобирать из пулов.
+
+### 2.3 Хуки обновления прогресса
+
+Добавить в `updateQuestProgress(hook, value)` обработку новых типов хуков:
+
+- **`correct_any`** — +`value` к прогрессу всех квестов с `hook === 'correct_any'`. Вызывать из `handleAnswer` при правильном ответе: `updateQuestProgress('correct_any', 1)`.
+- **`correct_topic:X`** — +1 к прогрессу квестов с `hook === 'correct_topic:' + topicKey`. Вызывать из `handleAnswer`: `updateQuestProgress('correct_topic:' + q.topicKey, 1)`.
+- **`streak`** — устанавливать `progress = Math.max(progress, state.correctStreak)` для квестов с `hook === 'streak'`. Вызывать из `handleAnswer` после обновления `state.correctStreak`.
+- **`games`** — +1 к прогрессу квестов с `hook === 'games'`. Вызывать из `endGame`.
+- **`xp`** — +`value` к прогрессу квестов с `hook === 'xp'`. Вызывать из `handleAnswer` со значением заработанного XP (уже с бонусом).
+- **`questions_in_game`** — при завершении партии: если `state.questions.length >= quest.goal` → прогресс = goal (выполнено). Вызывать из `endGame`.
+- **`topics_in_game`** — при завершении партии: если кол-во активных тем >= quest.goal → прогресс = goal. Вызывать из `endGame`.
+
+Обновлённая сигнатура `updateQuestProgress(hook, value)` должна корректно обрабатывать все 7 типов хуков.
+
+### 2.4 Награды за квесты
+
+`claimQuest(questId)` определяет награду по тиру:
+```js
+const QUEST_REWARDS = {
+  easy:   { xp: 25,  chests: 1 },
+  medium: { xp: 75,  chests: 3 },
+  hard:   { xp: 200, chests: 8 },
+};
+const tier = questId.split(':')[0]; // 'easy' | 'medium' | 'hard'
+const reward = QUEST_REWARDS[tier];
+```
+
+XP из квестов оборачивать через `applyBonus(reward.xp, getAchievementBonus(state.achievements))` — если достижения уже реализованы (промпт #36), иначе начислять без бонуса и добавить бонус в следующей итерации.
+
+---
+
+## 3. UI стрика — явные milestone-карточки
+
+Переработать секцию «Серия» в `renderTasks` / `ui.js`.
+
+**Новый вид:**
+
+```
+🔥 N дней подряд
+Играй каждый день хотя бы одну партию, чтобы не прерывать серию
+
+[ 3 дня ]     [ 7 дней ]    [ 14 дней ]   [ 30 дней ]
+50 XP+3🧰   150 XP+10🧰  300 XP+20🧰  500 XP+50🧰
+   🔒             🔒            🔒             🔒
+```
+
+Каждая milestone-карточка:
+- Число дней крупно
+- Награда (XP + сундуки)
+- Статус: 🔒 серый (ещё не достигнуто) / ★ жёлтый (ближайшая цель, текущий стрик < milestone) / ✅ зелёный (уже получено, `milestonesClaimedAt` содержит этот milestone)
+
+Ближайшая незавершённая цель — жёлтая обводка карточки + текст под ней: «Осталось N дней».
+
+Описание-подсказка под заголовком «Серия»:
+- RU: «Играй каждый день хотя бы одну партию, чтобы не прерывать серию. Достигнув отметки — получи бонус.»
+- EN: «Play at least one game every day to keep your streak. Reach a milestone to claim a reward.»
+
+---
+
+## 4. UI квестов — тиры и таймер
+
+### Заголовок секции квестов
+
+Под заголовком «Задания дня» добавить строку-таймер (если все квесты выполнены или в любом случае):
+```
+Обновление через 14:32:07
+```
+Таймер обновляется каждую секунду (`setInterval` пока экран активен, очищать при уходе).
+
+### Карточки квестов
+
+Визуально разделить на три группы с заголовком тира:
+
+**🥉 Лёгкие** (3 карточки)
+**🥈 Средние** (2 карточки)
+**🥇 Тяжёлые** (1 карточка)
+
+Каждая карточка квеста:
+- Иконка тира (🥉/🥈/🥇) слева
+- Текст задания
+- Прогресс-бар + «N / Goal»
+- Награда: «25 XP + 1🧰» / «75 XP + 3🧰» / «200 XP + 8🧰»
+- Кнопка «Получить» (когда `progress >= goal && !claimed`) или «Получено ✓»
+
+Цветовой акцент карточки по тиру:
+- Лёгкие: светло-зелёная полоска слева (`#86efac`)
+- Средние: светло-голубая (`#93c5fd`)
+- Тяжёлые: светло-жёлтая / золотая (`#fcd34d`)
+
+---
+
+## 5. `i18n.js`
+
+Добавить ключи для квестов (метки тиров и таймера):
+```js
+'tasks.tier.easy':   { ru: '🥉 Лёгкие',   en: '🥉 Easy'   },
+'tasks.tier.medium': { ru: '🥈 Средние',   en: '🥈 Medium' },
+'tasks.tier.hard':   { ru: '🥇 Тяжёлые',  en: '🥇 Hard'   },
+'tasks.timer':       { ru: 'Обновление через {t}', en: 'Resets in {t}' },
+'tasks.streak.hint': {
+  ru: 'Играй каждый день хотя бы одну партию, чтобы не прерывать серию. Достигнув отметки — получи бонус.',
+  en: 'Play at least one game every day to keep your streak. Reach a milestone to claim a reward.'
+},
+'tasks.streak.left': { ru: 'Осталось {n} дн.', en: '{n} days left' },
+```
+
+Для каждого id квеста добавить ключ `quest.{id}` со строками RU/EN из таблиц выше.
+
+---
+
+## 6. `CLAUDE.md` — обновить
+
+В разделе «Задания» обновить описание квестов:
+- Три тира: лёгкие (3/день), средние (2/день), тяжёлые (1/день). Пул каждого тира — 6 квестов, ротация по `dayOfYear`.
+- Награды: 25 XP+1🧰 / 75 XP+3🧰 / 200 XP+8🧰.
+- Ключи localStorage: `geogame:daily-quests` формат прежний.
+- Дейлик теперь использует дату (`YYYY-MM-DD`), а не таймстамп.
+- Сброс всего в полночь (date-based).
+
+---
+
+## 7. Проверка после реализации
+
+1. Установить `geogame:xpTotal = 0`, открыть Задания → видно 3+2+1 карточек с тирами 🥉🥈🥇.
+2. Сыграть партию из 10 вопросов → `easy:play1game` и `easy:play10q` получают прогресс → можно забрать награду.
+3. Дать 3 правильных ответа подряд → `easy:streak3` → выполнено.
+4. Стрик: «Осталось 3 дня» у ближайшего milestone (при 0 дня стрика).
+5. Таймер «Обновление через HH:MM:SS» работает и не замерзает при сворачивании.
+6. Изменить системную дату на завтра (или `getTodayString` подменить в консоли) → квесты и дейлик сбрасываются.
+
+**Результат / расхождения:** Реализовано полностью.
+- **Единый сброс по дате:** добавлены `getTodayString()` (UTC `toISOString().slice(0,10)`) и `getMsUntilMidnight()` (локальная полночь). `state.dailyPrize = { lastClaimDate }`; `isDailyPrizeAvailable` сравнивает с `getTodayString()`; старый формат `{lastClaim:ms}` игнорируется при загрузке (приз станет доступен — разовая миграция). `ensureDailyQuests` тоже на `getTodayString()`.
+- **Три тира:** `QUEST_POOL_EASY/MEDIUM/HARD` (по 6) + `QUEST_REWARDS`. `getTodayQuests()` собирает 3+2+1 ротацией по `dayOfYear`. Квест в state: `{id, hook, goal, tier, progress, completed, claimed}`.
+- **Хук-модель:** `updateQuestProgress(hook, value)` обновляет ВСЕ сегодняшние квесты с этим хуком. Накопительные (`games`/`correct_any`/`xp`/`correct_topic:X`) += value; максимум-хуки (`streak`/`questions_in_game`/`topics_in_game`) = max. Хуки: `handleAnswer` → correct_any/correct_topic:topicKey/streak(=correctStreak)/xp(=earned); `endGame` → games/questions_in_game(=questions.length)/topics_in_game(=activeTopicsCount). Старые квест-вызовы (streak5/correct15/play1game/earn100xp/play25q/dotraining) удалены.
+- **claimQuest:** награда по тиру (`id.split(':')[0]`) — XP (с `applyBonus` от достижений) + сундуки; синк xpTotal/inventory.
+- **UI:** таймер сброса `#tasks-quests-timer` под заголовком «Задания дня» (тикает до полуночи; при смене даты — полная перерисовка). Квесты сгруппированы по тирам с заголовками 🥉/🥈/🥇 и цветной полоской слева (#86efac/#93c5fd/#fcd34d), карточка: текст + прогресс-бар + «N / Goal» + награда + кнопка. Стрик — milestone-карточки: ✅ зелёная (получено) / жёлтая «Осталось N дн.» (ближайшая) / 🔒 серая, + подсказка. `setQuestsTimerText` добавлен в ui.js.
+- i18n: `tasks.tier.easy/medium/hard`, `tasks.timer`, `tasks.streak.hint`, `tasks.streak.left` + 18 ключей `quest.<tier>:<id>` (RU из ТЗ, EN — мой перевод). Старые 6 `quest.*` ключей удалены.
+- **Проверено в браузере (localhost:5500):** 3+2+1 карточек с правильными тирами/полосками/наградами; таймер «Обновление через 10:03:06»; все 7 хуков фиксируют прогресс (correct_any=4, xp=40, correct_topic:country=3✓, questions_in_game=10✓, topics_in_game=1); claim easy → +25 XP +1🧰, «Получено ✓»; дейлик claim → +75 XP/дата=сегодня/таймер, подмена даты → снова доступен + бейдж; milestone-карточки и «Осталось N дн.»; RU↔EN на всех элементах. Консоль чистая. Cache-busting 20260559→20260560.
+- **Известный нюанс (по ТЗ как есть):** `getTodayString()` использует UTC-дату, а `getMsUntilMidnight()` — локальную полночь (обе функции даны в ТЗ дословно). Для не-UTC часовых поясов момент фактического сброса (смена UTC-даты) и обнуление таймера (локальная полночь) не совпадают; тикер ловит смену даты посекундно и перерисовывается, так что функционально корректно, но отображаемый «Обновление через …» считает до локальной полуночи. При необходимости — выровнять в отдельной правке.
+
+---
+
 ## 2026-05-29 #36 | Система достижений с XP-бонусом
 
 **Цель:** Полноценная система достижений — 4 категории, многоуровневые, с суммарным % бонусом к любому XP.

@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260559";
+} from "./data.js?v=20260560";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260559";
+} from "./i18n.js?v=20260560";
 import {
   showScreen,
   getPlayAgainButton,
@@ -62,18 +62,19 @@ import {
   revealBonusGrid,
   renderTasks,
   setDailyCountdownText,
+  setQuestsTimerText,
   setTasksBadge,
   renderAchievements,
   setAchievementsBadge,
-} from "./ui.js?v=20260559";
+} from "./ui.js?v=20260560";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260559";
+  from "./levels.js?v=20260560";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260559";
+  from "./achievements.js?v=20260560";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -208,9 +209,9 @@ const DEFAULT_QUESTION_COUNT = 10;
 const DEFAULT_INVENTORY = { chests: 0 };
 
 // ---- Задания: дейлик / стрик / ежедневные квесты ----
+// Дейлик и квесты сбрасываются по дате (а не по 24ч-таймстампу) — единый сброс в полночь.
 const DAILY_PRIZE_XP = 75;
 const DAILY_PRIZE_CHESTS = 5;
-const DAILY_PRIZE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 // Вехи стрика (разовые награды, выдаются в endGame при достижении).
 const STREAK_MILESTONES = [
@@ -220,15 +221,38 @@ const STREAK_MILESTONES = [
   { days: 30, xp: 500, chests: 50 },
 ];
 
-// Пул ежедневных заданий (label — через i18n: quest.<id>). 3 в день выбираются детерминированно.
-const QUEST_POOL = [
-  { id: "play1game",  goal: 1,   reward: 40 },
-  { id: "correct15",  goal: 15,  reward: 30 },
-  { id: "earn100xp",  goal: 100, reward: 50 },
-  { id: "play25q",    goal: 1,   reward: 45 },
-  { id: "streak5",    goal: 1,   reward: 60 },
-  { id: "dotraining", goal: 1,   reward: 35 },
+// Пулы ежедневных квестов по тирам. Каждый квест: { id, hook, goal }.
+// hook — тип трекера прогресса (см. updateQuestProgress). label — через i18n: quest.<id>.
+const QUEST_POOL_EASY = [
+  { id: "easy:play1game", hook: "games",                 goal: 1 },
+  { id: "easy:correct5",  hook: "correct_any",           goal: 5 },
+  { id: "easy:earn30xp",  hook: "xp",                     goal: 30 },
+  { id: "easy:play10q",   hook: "questions_in_game",      goal: 10 },
+  { id: "easy:streak3",   hook: "streak",                 goal: 3 },
+  { id: "easy:flags3",    hook: "correct_topic:country",  goal: 3 },
 ];
+const QUEST_POOL_MEDIUM = [
+  { id: "medium:play2games", hook: "games",                 goal: 2 },
+  { id: "medium:correct15",  hook: "correct_any",           goal: 15 },
+  { id: "medium:earn100xp",  hook: "xp",                     goal: 100 },
+  { id: "medium:streak8",    hook: "streak",                 goal: 8 },
+  { id: "medium:capitals5",  hook: "correct_topic:capital",  goal: 5 },
+  { id: "medium:play25q",    hook: "questions_in_game",      goal: 25 },
+];
+const QUEST_POOL_HARD = [
+  { id: "hard:play3games", hook: "games",            goal: 3 },
+  { id: "hard:correct30",  hook: "correct_any",      goal: 30 },
+  { id: "hard:earn300xp",  hook: "xp",               goal: 300 },
+  { id: "hard:streak15",   hook: "streak",           goal: 15 },
+  { id: "hard:play50q",    hook: "questions_in_game",goal: 50 },
+  { id: "hard:multitopic", hook: "topics_in_game",   goal: 4 },
+];
+// Награды по тиру (тир = id.split(":")[0]).
+const QUEST_REWARDS = {
+  easy:   { xp: 25,  chests: 1 },
+  medium: { xp: 75,  chests: 3 },
+  hard:   { xp: 200, chests: 8 },
+};
 
 const STORAGE = {
   gamesPlayed: "geogame:gamesPlayed",
@@ -286,7 +310,7 @@ const state = {
   xpBeforeSession: 0,
   // Задания (только localStorage; Firestore-синк позже). Награды начисляют XP/сундуки,
   // которые синкаются вместе с обычным прогрессом.
-  dailyPrize: { lastClaim: 0 },                                  // { lastClaim: ms }
+  dailyPrize: { lastClaimDate: "" },                             // { lastClaimDate: "YYYY-MM-DD" }
   streak: { count: 0, lastGameDate: "", milestonesClaimedAt: [] }, // date "YYYY-MM-DD"
   dailyQuests: { date: "", quests: [] },                          // { date, quests: [...] }
   // Достижения: { "category:id": { progress, level } }. Заполняется initAchievements.
@@ -344,10 +368,12 @@ function loadFromStorage() {
   const qc = Number(localStorage.getItem(STORAGE.setupQuestionCount));
   if (QUESTION_COUNTS.includes(qc)) state.setup.questionCount = qc;
 
-  // Дейлик
+  // Дейлик (дейт-бэйзд). Старый формат { lastClaim: ms } игнорируем — приз снова доступен.
   try {
     const dp = JSON.parse(localStorage.getItem(STORAGE.dailyPrize) || "null");
-    if (dp && typeof dp === "object") state.dailyPrize = { lastClaim: Number(dp.lastClaim) || 0 };
+    if (dp && typeof dp === "object" && typeof dp.lastClaimDate === "string") {
+      state.dailyPrize = { lastClaimDate: dp.lastClaimDate };
+    }
   } catch (_) {}
 
   // Стрик
@@ -658,8 +684,6 @@ function handleAnswer(picked, allButtons, correct) {
     if (state.hintCharge >= 5) {
       state.hintAvailable = true;
       state.hintCharge = 0;
-      // Задание «5 правильных подряд» (только в обычной партии).
-      if (!state.isTraining) updateQuestProgress("streak5", 1);
     }
 
     // --- Достижения: трекинг при правильном ответе (handleAnswer — только обычная партия) ---
@@ -690,8 +714,11 @@ function handleAnswer(picked, allButtons, correct) {
       state.xpTotal += earned;
       state.xpEarnedThisGame += earned;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
-      // Задание «Ответь верно на 15 вопросов» (накапливается за день).
-      updateQuestProgress("correct15", 1);
+      // Хуки квестов при правильном ответе.
+      updateQuestProgress("correct_any", 1);
+      updateQuestProgress("correct_topic:" + q.topicKey, 1);
+      updateQuestProgress("streak", state.correctStreak);
+      updateQuestProgress("xp", earned);
     }
   } else {
     state.hintCharge = 0; // серия прервана
@@ -800,10 +827,12 @@ function endGame() {
   // (анимация запускается в конце потока, после бонуса).
   state.xpBeforeSession = state.xpTotal - state.xpEarnedThisGame;
 
-  // --- Задания: трекинг по итогам партии ---
-  updateQuestProgress("play1game", 1);
-  updateQuestProgress("earn100xp", state.xpEarnedThisGame);
-  if (state.questions.length >= 25) updateQuestProgress("play25q", 1);
+  const activeTopicsCount = Object.values(state.setup.topicDifficulties).filter((v) => v >= 0).length;
+
+  // --- Задания: трекинг по итогам партии (хуки games / questions_in_game / topics_in_game) ---
+  updateQuestProgress("games", 1);
+  updateQuestProgress("questions_in_game", state.questions.length);
+  updateQuestProgress("topics_in_game", activeTopicsCount);
   // Стрик: обновить счётчик и выдать награды за вехи (меняет xpTotal/инвентарь).
   updateStreak();
 
@@ -813,7 +842,6 @@ function endGame() {
   achNewLevels.push(...setAchievementProgress(state.achievements, "volume:xp", state.xpTotal));
   if (state.wrongAnswers.length === 0 && state.questions.length >= 10)
     achNewLevels.push(...advanceAchievement(state.achievements, "mastery:perfect", 1));
-  const activeTopicsCount = Object.values(state.setup.topicDifficulties).filter((v) => v >= 0).length;
   if (activeTopicsCount === Object.keys(TOPICS).length)
     achNewLevels.push(...advanceAchievement(state.achievements, "mastery:alltopics", 1));
   if (state.setup.regions.length === Object.keys(REGIONS).length)
@@ -1027,10 +1055,7 @@ function finishTraining() {
   state.trainingQueue = [];
   state.trainingCurrent = null;
   document.getElementById("game-screen")?.classList.remove("training-mode");
-  // Задание «Пройди обучение (не пропускай)» — засчитывается только при реальном
-  // завершении обучения (skipTraining сюда не заходит).
-  updateQuestProgress("dotraining", 1);
-  // Достижение «Прилежный» — завершить обучение 10 раз.
+  // Достижение «Прилежный» — завершить обучение 10 раз (skipTraining сюда не заходит).
   const achNewLevels = advanceAchievement(state.achievements, "mastery:training", 1);
   persistAchievements();
   if (achNewLevels.length) handleNewAchievementLevels(achNewLevels);
@@ -1174,6 +1199,17 @@ function dayOfYear() {
   const start = new Date(now.getFullYear(), 0, 0);
   return Math.floor((now - start) / 86400000);
 }
+// Сегодняшняя дата "YYYY-MM-DD" — единый ключ сброса дейлика и квестов.
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+// Миллисекунд до полуночи — для таймера «обновление через …».
+function getMsUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  return midnight - now;
+}
 
 function persistDailyPrize() { localStorage.setItem(STORAGE.dailyPrize, JSON.stringify(state.dailyPrize)); }
 function persistStreak()     { localStorage.setItem(STORAGE.streak, JSON.stringify(state.streak)); }
@@ -1193,9 +1229,9 @@ function handleNewAchievementLevels(newLevels) {
   setAchievementsBadge(true);
 }
 
-// --- Дейлик ---
+// --- Дейлик (сброс по дате) ---
 function isDailyPrizeAvailable() {
-  return Date.now() - (state.dailyPrize.lastClaim || 0) >= DAILY_PRIZE_COOLDOWN_MS;
+  return state.dailyPrize.lastClaimDate !== getTodayString();
 }
 function formatCountdown(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -1208,7 +1244,7 @@ function claimDailyPrize() {
   if (!isDailyPrizeAvailable()) return;
   state.xpTotal += applyBonus(DAILY_PRIZE_XP, getAchievementBonus(state.achievements));
   state.inventory.chests += DAILY_PRIZE_CHESTS;
-  state.dailyPrize.lastClaim = Date.now();
+  state.dailyPrize.lastClaimDate = getTodayString();
   persistXp();
   persistInventory();
   persistDailyPrize();
@@ -1250,46 +1286,70 @@ function updateStreak() {
   persistInventory();
 }
 
-// --- Ежедневные задания ---
+// --- Ежедневные задания (три тира: 3 лёгких + 2 средних + 1 тяжёлый) ---
+
+// Детерминированный набор квестов на день (ротация по dayOfYear).
+function getTodayQuests() {
+  const day = dayOfYear();
+  return [
+    QUEST_POOL_EASY[day % 6],
+    QUEST_POOL_EASY[(day + 2) % 6],
+    QUEST_POOL_EASY[(day + 4) % 6],
+    QUEST_POOL_MEDIUM[day % 6],
+    QUEST_POOL_MEDIUM[(day + 3) % 6],
+    QUEST_POOL_HARD[day % 6],
+  ];
+}
+
 // Гарантирует, что state.dailyQuests актуальны для сегодняшней даты (иначе перегенерирует).
 function ensureDailyQuests() {
-  const today = todayStr();
+  const today = getTodayString();
   if (state.dailyQuests.date === today
       && Array.isArray(state.dailyQuests.quests)
-      && state.dailyQuests.quests.length === 3) {
+      && state.dailyQuests.quests.length === 6) {
     return;
   }
-  const start = dayOfYear() % (QUEST_POOL.length - 2); // 0..3 — slice(start, start+3) всегда в границах
-  const picked = QUEST_POOL.slice(start, start + 3);
   state.dailyQuests = {
     date: today,
-    quests: picked.map((q) => ({
-      id: q.id, progress: 0, goal: q.goal, reward: q.reward,
-      completed: false, claimed: false,
+    quests: getTodayQuests().map((q) => ({
+      id: q.id, hook: q.hook, goal: q.goal, tier: q.id.split(":")[0],
+      progress: 0, completed: false, claimed: false,
     })),
   };
   persistDailyQuests();
 }
 
-// Обновляет прогресс задания (если оно среди сегодняшних и не забрано).
-function updateQuestProgress(id, amount) {
+// Обновляет прогресс всех сегодняшних квестов с данным хуком.
+// Семантика по типу хука:
+//   games / correct_any / xp / correct_topic:X — накапливаются (progress += value);
+//   streak / questions_in_game / topics_in_game — берётся максимум (progress = max(progress, value)).
+function updateQuestProgress(hook, value) {
   ensureDailyQuests();
-  const q = state.dailyQuests.quests.find((x) => x.id === id);
-  if (!q || q.claimed) return;
-  q.progress = Math.min(q.goal, q.progress + amount);
-  if (q.progress >= q.goal) q.completed = true;
-  persistDailyQuests();
+  const cumulative = !(hook === "streak" || hook === "questions_in_game" || hook === "topics_in_game");
+  let changed = false;
+  for (const q of state.dailyQuests.quests) {
+    if (q.hook !== hook || q.claimed) continue;
+    q.progress = cumulative
+      ? Math.min(q.goal, q.progress + value)
+      : Math.min(q.goal, Math.max(q.progress, value));
+    if (q.progress >= q.goal) q.completed = true;
+    changed = true;
+  }
+  if (changed) persistDailyQuests();
 }
 
 function claimQuest(id) {
   const q = state.dailyQuests.quests.find((x) => x.id === id);
   if (!q || !q.completed || q.claimed) return;
   q.claimed = true;
-  state.xpTotal += applyBonus(q.reward, getAchievementBonus(state.achievements));
+  const reward = QUEST_REWARDS[q.tier] || { xp: 0, chests: 0 };
+  state.xpTotal += applyBonus(reward.xp, getAchievementBonus(state.achievements));
+  state.inventory.chests += reward.chests;
   persistXp();
+  persistInventory();
   persistDailyQuests();
   if (state.user) {
-    saveUserData(state.user.uid, { xpTotal: state.xpTotal }).catch(console.error);
+    saveUserData(state.user.uid, { xpTotal: state.xpTotal, inventory: state.inventory }).catch(console.error);
   }
   renderTasksScreen();
   refreshMenuScreen();
@@ -1311,52 +1371,61 @@ function buildTasksVM() {
       available: isDailyPrizeAvailable(),
       prizeXp: DAILY_PRIZE_XP,
       prizeChests: DAILY_PRIZE_CHESTS,
-      countdown: formatCountdown(DAILY_PRIZE_COOLDOWN_MS - (Date.now() - (state.dailyPrize.lastClaim || 0))),
+      countdown: formatCountdown(getMsUntilMidnight()),
     },
     streak: {
       count,
+      hint: t("tasks.streak.hint"),
       milestones: STREAK_MILESTONES.map((m, i) => ({
         days: m.days,
         reward: { xp: m.xp, chests: m.chests },
         reached: count >= m.days,
         current: count < m.days && (i === 0 || count >= STREAK_MILESTONES[i - 1].days),
+        daysLeft: Math.max(0, m.days - count),
       })),
     },
-    quests: state.dailyQuests.quests.map((q) => ({
-      id: q.id,
-      label: t("quest." + q.id),
-      progress: q.progress,
-      goal: q.goal,
-      reward: q.reward,
-      completed: q.completed,
-      claimed: q.claimed,
-    })),
+    questsTimer: t("tasks.timer", { t: formatCountdown(getMsUntilMidnight()) }),
+    quests: state.dailyQuests.quests.map((q) => {
+      const reward = QUEST_REWARDS[q.tier] || { xp: 0, chests: 0 };
+      return {
+        id: q.id,
+        tier: q.tier,
+        label: t("quest." + q.id),
+        progress: q.progress,
+        goal: q.goal,
+        rewardXp: reward.xp,
+        rewardChests: reward.chests,
+        completed: q.completed,
+        claimed: q.claimed,
+      };
+    }),
   };
 }
 
+let tasksRenderedDate = "";
 function renderTasksScreen() {
+  tasksRenderedDate = getTodayString();
   renderTasks(buildTasksVM(), claimDailyPrize, claimQuest);
 }
 
 let tasksTimerId = null;
 function startTasksTimer() {
   clearTasksTimer();
-  // Тикер обновляет обратный отсчёт дейлика раз в секунду, пока открыт экран.
+  // Тикер раз в секунду: обновляет таймеры до полуночи; при смене даты — полная перерисовка
+  // (новый дейлик + сгенерированные квесты).
   tasksTimerId = setInterval(() => {
     if (!document.getElementById("tasks-screen").classList.contains("active")) {
       clearTasksTimer();
       return;
     }
-    if (isDailyPrizeAvailable()) {
-      // Отсчёт истёк — перерисовать, чтобы показать кнопку, и обновить бейдж.
-      clearTasksTimer();
-      renderTasksScreen();
+    if (getTodayString() !== tasksRenderedDate) {
+      renderTasksScreen();   // наступила новая дата — пересобрать дейлик/квесты
       refreshMenuScreen();
       return;
     }
-    setDailyCountdownText(
-      formatCountdown(DAILY_PRIZE_COOLDOWN_MS - (Date.now() - (state.dailyPrize.lastClaim || 0)))
-    );
+    const text = formatCountdown(getMsUntilMidnight());
+    setQuestsTimerText(t("tasks.timer", { t: text }));
+    if (!isDailyPrizeAvailable()) setDailyCountdownText(text);
   }, 1000);
 }
 function clearTasksTimer() {

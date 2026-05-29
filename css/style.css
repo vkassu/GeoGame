@@ -1214,13 +1214,53 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   color: #d98a00;
   border-color: #f0b429;
 }
+.tasks-milestone.locked { opacity: .85; }
+.tasks-milestone .tasks-milestone-status {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.tasks-streak-hint {
+  font-size: 12px;
+  color: #667;
+  line-height: 1.35;
+  margin: 0 0 12px;
+}
+
+/* Таймер сброса под заголовком «Задания дня» */
+.tasks-timer-line {
+  font-size: 13px;
+  font-weight: 600;
+  color: #667;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+
+/* Заголовок группы тира */
+.tasks-tier-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 12px 0 6px;
+}
 
 /* Блок 3: задания дня */
 .tasks-quest {
-  padding: 10px 0;
-  border-bottom: 1px solid #e8eaed;
+  padding: 10px 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: #f7fafc;
+  border-left: 4px solid #cbd5e1; /* цвет переопределяется тиром */
 }
-.tasks-quest:last-child { border-bottom: none; }
+.tasks-quest.tier-easy   { border-left-color: #86efac; }
+.tasks-quest.tier-medium { border-left-color: #93c5fd; }
+.tasks-quest.tier-hard   { border-left-color: #fcd34d; }
+.tasks-quest-reward {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2c7be5;
+  margin-top: 6px;
+}
 .tasks-quest-label {
   font-size: 14px;
   font-weight: 600;

@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260559";
-import { t } from "./i18n.js?v=20260559";
+import { codeToEmoji, officialName } from "./data.js?v=20260560";
+import { t } from "./i18n.js?v=20260560";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -695,15 +695,17 @@ function formatXpShort(n) {
 /**
  * Рендерит весь экран заданий из вью-модели (логика/state — в main.js).
  * @param {Object} vm
- * @param {Object} vm.daily   — { available, prizeXp, prizeChests, countdown }
- * @param {Object} vm.streak  — { count, milestones: [{ days, reward, reached, current }] }
- * @param {Array}  vm.quests  — [{ id, label, progress, goal, reward, completed, claimed }]
+ * @param {Object} vm.daily       — { available, prizeXp, prizeChests, countdown }
+ * @param {Object} vm.streak      — { count, hint, milestones: [{ days, reward, reached, current, daysLeft }] }
+ * @param {string} vm.questsTimer — текст таймера сброса квестов («Обновление через HH:MM:SS»)
+ * @param {Array}  vm.quests      — [{ id, tier, label, progress, goal, rewardXp, rewardChests, completed, claimed }]
  * @param {Function} onClaimDaily — () => void
  * @param {Function} onClaimQuest — (id) => void
  */
 export function renderTasks(vm, onClaimDaily, onClaimQuest) {
   renderTasksDaily(document.getElementById("tasks-daily-body"), vm.daily, onClaimDaily);
   renderTasksStreak(document.getElementById("tasks-streak-body"), vm.streak);
+  setQuestsTimerText(vm.questsTimer);
   renderTasksQuests(document.getElementById("tasks-quests-body"), vm.quests, onClaimQuest);
 }
 
@@ -741,71 +743,113 @@ function renderTasksStreak(body, streak) {
   line.textContent = "🔥 " + t("tasks.streak-days", { n: streak.count });
   body.appendChild(line);
 
+  if (streak.hint) {
+    const hint = document.createElement("p");
+    hint.className = "tasks-streak-hint";
+    hint.textContent = streak.hint;
+    body.appendChild(hint);
+  }
+
   const marks = document.createElement("div");
   marks.className = "tasks-milestones";
   for (const m of streak.milestones) {
     const mk = document.createElement("div");
     mk.className = "tasks-milestone"
-      + (m.reached ? " reached" : (m.current ? " current" : ""));
-    const days = document.createElement("span");
+      + (m.reached ? " reached" : (m.current ? " current" : " locked"));
+
+    const days = document.createElement("div");
     days.className = "tasks-milestone-days";
-    days.textContent = m.days;
-    const reward = document.createElement("span");
+    days.textContent = t("tasks.streak-days", { n: m.days });
+    mk.appendChild(days);
+
+    const reward = document.createElement("div");
     reward.className = "tasks-milestone-reward";
-    reward.textContent = `+${m.reward.xp} · +${m.reward.chests}🧰`;
-    mk.append(days, reward);
+    reward.textContent = `${m.reward.xp} XP +${m.reward.chests}🧰`;
+    mk.appendChild(reward);
+
+    const status = document.createElement("div");
+    status.className = "tasks-milestone-status";
+    if (m.reached) status.textContent = "✅";
+    else if (m.current) status.textContent = t("tasks.streak.left", { n: m.daysLeft });
+    else status.textContent = "🔒";
+    mk.appendChild(status);
+
     marks.appendChild(mk);
   }
   body.appendChild(marks);
 }
 
+const QUEST_TIERS = ["easy", "medium", "hard"];
+
 function renderTasksQuests(body, quests, onClaim) {
   body.innerHTML = "";
-  for (const q of quests) {
-    const card = document.createElement("div");
-    card.className = "tasks-quest" + (q.claimed ? " claimed" : "");
-
-    const label = document.createElement("div");
-    label.className = "tasks-quest-label";
-    label.textContent = q.label;
-    card.appendChild(label);
-
-    const row = document.createElement("div");
-    row.className = "tasks-quest-row";
-
-    const bar = document.createElement("div");
-    bar.className = "tasks-quest-bar";
-    const fill = document.createElement("div");
-    fill.className = "tasks-quest-bar-fill";
-    const pct = q.goal > 0 ? Math.min(100, (q.progress / q.goal) * 100) : 0;
-    fill.style.width = pct.toFixed(0) + "%";
-    bar.appendChild(fill);
-
-    const prog = document.createElement("span");
-    prog.className = "tasks-quest-prog";
-    prog.textContent = Math.min(q.progress, q.goal) + "/" + q.goal;
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "tasks-quest-btn";
-    if (q.claimed) {
-      btn.textContent = t("tasks.claimed");
-      btn.disabled = true;
-    } else {
-      btn.textContent = t("tasks.claim") + " +" + q.reward;
-      btn.disabled = !q.completed;
-      if (q.completed) btn.addEventListener("click", () => onClaim(q.id));
-    }
-
-    row.append(bar, prog, btn);
-    card.appendChild(row);
-    body.appendChild(card);
+  for (const tier of QUEST_TIERS) {
+    const group = quests.filter((q) => q.tier === tier);
+    if (!group.length) continue;
+    const title = document.createElement("div");
+    title.className = "tasks-tier-title";
+    title.textContent = t("tasks.tier." + tier);
+    body.appendChild(title);
+    for (const q of group) body.appendChild(buildQuestCard(q, onClaim));
   }
+}
+
+function buildQuestCard(q, onClaim) {
+  const card = document.createElement("div");
+  card.className = "tasks-quest tier-" + q.tier + (q.claimed ? " claimed" : "");
+
+  const label = document.createElement("div");
+  label.className = "tasks-quest-label";
+  label.textContent = q.label;
+  card.appendChild(label);
+
+  const row = document.createElement("div");
+  row.className = "tasks-quest-row";
+
+  const bar = document.createElement("div");
+  bar.className = "tasks-quest-bar";
+  const fill = document.createElement("div");
+  fill.className = "tasks-quest-bar-fill";
+  const pct = q.goal > 0 ? Math.min(100, (q.progress / q.goal) * 100) : 0;
+  fill.style.width = pct.toFixed(0) + "%";
+  bar.appendChild(fill);
+
+  const prog = document.createElement("span");
+  prog.className = "tasks-quest-prog";
+  prog.textContent = Math.min(q.progress, q.goal) + " / " + q.goal;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tasks-quest-btn";
+  if (q.claimed) {
+    btn.textContent = t("tasks.claimed");
+    btn.disabled = true;
+  } else {
+    btn.textContent = t("tasks.claim");
+    btn.disabled = !q.completed;
+    if (q.completed) btn.addEventListener("click", () => onClaim(q.id));
+  }
+
+  row.append(bar, prog, btn);
+  card.appendChild(row);
+
+  const reward = document.createElement("div");
+  reward.className = "tasks-quest-reward";
+  reward.textContent = `+${q.rewardXp} XP  +${q.rewardChests} 🧰`;
+  card.appendChild(reward);
+
+  return card;
 }
 
 // Обновить только текст обратного таймера дейлика (вызывается из setInterval).
 export function setDailyCountdownText(str) {
   const el = document.getElementById("tasks-daily-countdown");
+  if (el) el.textContent = str;
+}
+
+// Обновить текст таймера сброса квестов «Обновление через …».
+export function setQuestsTimerText(str) {
+  const el = document.getElementById("tasks-quests-timer");
   if (el) el.textContent = str;
 }
 
