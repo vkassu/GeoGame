@@ -18,6 +18,166 @@
 
 ---
 
+## 2026-05-29 #42 | Новая тема: «Угадай страну по силуэту»
+
+**Цель:** Добавить тему `silhouette` — показывается SVG-силуэт границ страны, игрок выбирает название.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (localhost:5500 — тема рендерит SVG-силуэт, гейтинг по манифесту, ответ+хук достижения, экран достижений «Топограф», RU/EN, консоль чистая)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+## Новая тема: «Угадай страну по силуэту» (`silhouette`)
+
+### Контекст
+
+Игра — чистый HTML/CSS/JS, ES-модули, без фреймворков. Данные стран — `data/countries.json` (ключ `cca2`). Флаги и гербы уже хранятся локально в `img/flags/` и `img/coats/`. Новая тема устроена по той же схеме: разовый скрипт генерирует файлы → они коммитятся в репо → рантайм читает локально.
+
+---
+
+### Шаг 1 — Скрипт генерации силуэтов (`scripts/build_silhouettes.js`)
+
+Написать Node-скрипт (CommonJS, как `scripts/fetch_countries.js`).
+
+**Что делает:**
+
+1. Скачивает GeoJSON границ стран — Natural Earth 110m:
+   `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson`
+   (110m — низкое разрешение, ~800 КБ — достаточно для силуэта)
+
+2. Читает `data/countries.json`, строит словарь `cca2 → true` (246 стран).
+
+3. Для каждого feature в GeoJSON:
+   - Берёт поле `properties.ISO_A2` как ключ (это cca2). Если `-99` или нет в нашем словаре — пропустить.
+   - Достаёт все координаты (Polygon и MultiPolygon — обходить рекурсивно).
+   - Находит bbox: minLon, maxLon, minLat, maxLat.
+   - Нормализует координаты в viewBox `0 0 200 200` (сохранить пропорции через `preserveAspectRatio`, padding 10px внутри).
+   - Строит SVG-строку: `<svg xmlns="..." viewBox="0 0 200 200"><path d="..." fill="#4f46e5"/></svg>`
+   - Longitude → x, Latitude → y (y перевернуть: `y = 200 - normLat`).
+   - Для MultiPolygon — несколько `<path>` или один объединённый через `M...Z M...Z`.
+
+4. Пишет файл `data/silhouettes/{cca2}.svg` (создать папку если нет).
+
+5. В конце выводит: сколько силуэтов создано, сколько стран из countries.json не нашлось в GeoJSON (вывести их cca2 — это нормально, маленькие острова могут отсутствовать в 110m).
+
+Запуск: `node scripts/build_silhouettes.js`
+
+---
+
+### Шаг 2 — Новая тема в `js/main.js`
+
+В объект `TOPICS` добавить запись **последней** (она самая сложная → разблокируется позже всех согласно `initLevelUnlocks`):
+
+```js
+silhouette: {
+  get label() { return t('topic.silhouette.label'); },
+  get question() { return t('topic.silhouette.question'); },
+  prompt(country) { return { type: 'silhouette', country }; },
+  answer(country) { return getName(country); },
+  valid(country) { return true; },
+},
+```
+
+---
+
+### Шаг 3 — UI в `js/ui.js`
+
+В функции `renderQuestion` добавить ветку для `prompt.type === 'silhouette'`:
+
+```js
+} else if (prompt.type === 'silhouette') {
+  const cca2 = prompt.country.cca2.toLowerCase();
+  const img = document.createElement('img');
+  img.className = 'silhouette-img';
+  img.src = `data/silhouettes/${cca2}.svg`;
+  img.alt = '';
+  img.onerror = () => {
+    img.style.display = 'none';
+    const fb = document.createElement('div');
+    fb.className = 'silhouette-fallback';
+    fb.textContent = '?';
+    promptEl.appendChild(fb);
+  };
+  promptEl.appendChild(img);
+}
+```
+
+В `css/style.css` добавить:
+
+```css
+.silhouette-img {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  filter: brightness(0) saturate(100%) invert(30%) sepia(90%) saturate(500%) hue-rotate(220deg);
+}
+
+.silhouette-fallback {
+  font-size: 64px;
+  color: #94a3b8;
+  line-height: 180px;
+}
+```
+
+---
+
+### Шаг 4 — i18n (`js/i18n.js`)
+
+Добавить ключи в словарь RU и EN:
+
+```
+'topic.silhouette.label': { ru: 'Силуэт', en: 'Silhouette' }
+'topic.silhouette.question': { ru: 'Что за страна?', en: 'Which country?' }
+```
+
+---
+
+### Шаг 5 — `data/silhouettes/` в `.gitignore`
+
+Проверить: папка `data/silhouettes/` **не должна быть** в `.gitignore`. Файлы нужно коммитить в репо (как `img/flags/`).
+
+---
+
+### Шаг 6 — Обновить документацию
+
+В `CLAUDE.md`:
+- В раздел «Структура проекта» добавить `data/silhouettes/{cca2}.svg` и `scripts/build_silhouettes.js`.
+- В раздел «Темы вопросов» добавить пункт 12: **Силуэт** (`silhouette`).
+- В раздел «Сделано» добавить тему после реализации.
+
+В `BACKLOG.md` найти запись «Темы с картой» — добавить заметку: «Силуэт реализован как статичные SVG (#42), без интерактивной карты».
+
+---
+
+### Проверка
+
+1. `node scripts/build_silhouettes.js` — создать `data/silhouettes/*.svg`, вывести количество.
+2. Открыть несколько SVG вручную — силуэт читаем (Франция, Австралия, Япония).
+3. Включить тему «Силуэт» в игре → силуэт рисуется, ответы работают.
+4. Проверить фолбэк: переименовать один SVG → вместо битой картинки показывается `?`.
+
+**Результат / расхождения:** Реализовано. Перед стартом проверены реальные данные (принцип #2) — это выявило два существенных отклонения от черновой спеки, согласованы с Алексеем через вопрос:
+
+- **Разрешение 110m → 50m.** 110m покрывает лишь ~175/250 стран (75 без силуэта, включая Сингапур, Мальту, Бахрейн, Мальдивы, Кабо-Верде) → ~30% вопросов были бы неотгадываемым «?». Перешли на Natural Earth **50m** (~3 МБ GeoJSON) — покрытие **236/250**, узнаваемые контуры. Без силуэта остаются 14 (нет геометрии в 50m): BQ,BV,CC,CX,GF,GI,GP,MQ,RE,SJ,TK,TW,UM,YT.
+- **Гейтинг `valid` через манифест** (вместо `valid: () => true` + «?»). Скрипт пишет `data/silhouettes/index.json` (массив cca2); `data.js` грузит его (`hasSilhouette`), и `silhouette.valid = hasSilhouette` — в тему попадают только страны с силуэтом, «?» в норме недостижим (остаётся как defensive-фолбэк в UI).
+- **12-е достижение `topic:silhouette`** («Топограф/Topographer», 10 уровней, +1% XP/ур.) — чтобы сохранить паритет «у каждой темы есть topic-достижение». Всего достижений 24 → **25**.
+
+Прочие технические решения/отклонения:
+- **i18n:** черновой спеке предлагался `t('topic.silhouette.label')`, но в проекте темы берут метки из словарей `TOPIC_LABELS`/`TOPIC_QUESTIONS` (`{ru,en}` на ключ) — добавил туда (Силуэт/Silhouette, «Что это за страна?»/«What country is this?»).
+- **UI:** спека ссылалась на `promptEl`; фактический контейнер вопроса — `#flag-big` (`flagEl`) в `renderQuestion`. Ветка `prompt.type === "silhouette"` рендерит `<img class="silhouette-img" src="data/silhouettes/{cca2}.svg">`, фолбэк `onerror` → класс `silhouette-fallback` + «?». Класс сбрасывается в начале каждого `renderQuestion`.
+- **CSS:** фильтр-перекраска из спеки **не нужна** — цвет (#4f46e5) зашит в `fill` SVG. Селектор `.flag-big img.silhouette-img` перебивает базовый `.flag-big img` (рамка + width:100%): без рамки, `max-height:180px`, `width:auto`, центр.
+- **Скрипт build_silhouettes.js:** (а) фолбэк `ISO_A2 → ISO_A2_EH` (иначе France/Norway/Kosovo приходят как `-99`); (б) **антимеридиан** — при ширине bbox по долготе > 180° отрицательные долготы сдвигаются на +360 (иначе Россия/США/Фиджи «размазываются» на всю ширину); (в) при нескольких feature на один код берётся самый крупный по числу точек (баг: у AU три записи, и крошечные «о-ва Ашмор» перетирали материк — поймано на проверке файлов 236 vs манифест 238); (г) координаты округляются до 0.1; (д) папка пересоздаётся при каждом запуске.
+- **Ограничение (задокументировано в скрипте):** рисуются ВСЕ полигоны, поэтому у стран с заморскими территориями (Франция и т. п.) кроме материка видны мелкие точки-острова. Материк доминирует; фильтрация — при необходимости отдельной задачей.
+- **levels.js:** комментарий-заглушка обновлён (12 тем × 4 = 48 разблокировок, потолок контента — уровень 48).
+- **Версия cache-busting:** 20260564 → **20260565** (main/ui/data + css/script в index.html); firebase.js — `20260538`.
+
+**Проверка (браузер, синхронный прогон):** `node scripts/build_silhouettes.js` → 236 SVG + index.json (236), 14 missing. В игре (XP выкручен в макс, чтобы открыть тему): тем стало 12, последняя — «Силуэт»; вопрос рендерит силуэт (Катар, `qa.svg`, `naturalWidth>0`, фолбэк не сработал, SVG отдаётся 200); варианты — названия стран, верный среди них; ответ засчитывается («Правильный ответ»), хук `topic:silhouette` не падает; экран достижений показывает 25 достижений, «Топограф — Ур. 0 / +0% к XP»; EN-метка темы — «Silhouette», вопрос «What country is this?». Консоль без ошибок/предупреждений.
+
+---
+
 ## 2026-05-29 #41 | Фикс: resetProgress не сбрасывает дейлик / стрик / задания
 
 **Цель:** После «Сбросить прогресс» игрок видит дейлик и задания как новые — всё доступно заново.

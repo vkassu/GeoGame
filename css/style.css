@@ -405,6 +405,21 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   background: #eef3f7;
   border-radius: 8px;
 }
+/* Силуэт страны: SVG уже залит индиго (#4f46e5) — фильтр-перекраска не нужен.
+   Селектор перебивает .flag-big img (рамка + width:100%). */
+.flag-big img.silhouette-img {
+  border: none;
+  max-height: 180px;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+}
+.flag-big.silhouette-fallback {
+  font-size: 96px;
+  color: #94a3b8;
+}
 .question-text { font-size: 18px; margin: 0 0 16px; }
 
 .options {

@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260564";
-import { t } from "./i18n.js?v=20260564";
+import { codeToEmoji, officialName } from "./data.js?v=20260565";
+import { t } from "./i18n.js?v=20260565";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -374,6 +374,7 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
 
   const flagEl = document.getElementById("flag-big");
   flagEl.innerHTML = "";
+  flagEl.classList.remove("silhouette-fallback");
   if (prompt.type === "text") {
     flagEl.classList.add("text-prompt");
     flagEl.textContent = prompt.text;
@@ -381,6 +382,19 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;
     flagEl.appendChild(localAssetImg("coats", country.cca2, "coa-img", () => { flagEl.textContent = "🏛"; }));
+  } else if (prompt.type === "silhouette") {
+    flagEl.classList.remove("text-prompt");
+    const cca2 = (prompt.country.cca2 || "").toLowerCase();
+    const img = document.createElement("img");
+    img.className = "silhouette-img";
+    img.alt = ""; // страна скрыта намеренно
+    img.onerror = () => {
+      img.onerror = null;
+      flagEl.classList.add("silhouette-fallback");
+      flagEl.textContent = "?"; // фолбэк (в норме недостижим — тема гейтится манифестом)
+    };
+    img.src = `data/silhouettes/${cca2}.svg`;
+    flagEl.appendChild(img);
   } else {
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;

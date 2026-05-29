@@ -40,7 +40,7 @@ addMulti("region:africa",   "region", "Знаток Африки",  "Africa Expe
 addMulti("region:americas", "region", "Знаток Америк",  "Americas Expert");
 addMulti("region:oceania",  "region", "Знаток Океании", "Oceania Expert");
 
-// --- Категория topic (11) — порядок совпадает с TOPICS ---
+// --- Категория topic (12) — порядок совпадает с TOPICS ---
 addMulti("topic:country",          "topic", "Флаговед",   "Flag Expert");
 addMulti("topic:capital",          "topic", "Картограф",  "Cartographer");
 addMulti("topic:countryByCapital", "topic", "Навигатор",  "Navigator");
@@ -52,6 +52,7 @@ addMulti("topic:nativeName",       "topic", "Этнограф",   "Ethnographer"
 addMulti("topic:coatOfArms",       "topic", "Геральдист", "Heraldist");
 addMulti("topic:density",          "topic", "Статистик",  "Statistician");
 addMulti("topic:religion",         "topic", "Теолог",     "Theologian");
+addMulti("topic:silhouette",       "topic", "Топограф",   "Topographer");
 
 // --- Категория volume (2) ---
 ACHIEVEMENT_DEFS["volume:games"] = {

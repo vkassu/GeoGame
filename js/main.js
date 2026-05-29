@@ -18,7 +18,8 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260564";
+  hasSilhouette,
+} from "./data.js?v=20260565";
 import {
   getLang,
   setLang,
@@ -27,7 +28,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260564";
+} from "./i18n.js?v=20260565";
 import {
   showScreen,
   getPlayAgainButton,
@@ -70,15 +71,15 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260564";
+} from "./ui.js?v=20260565";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260564";
+  from "./levels.js?v=20260565";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260564";
+  from "./achievements.js?v=20260565";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -173,6 +174,15 @@ const TOPICS = {
     prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: (c) => religionName(c),
     valid: (c) => hasReligion(c),
+  },
+  // Тип А (назови страну): показываем SVG-контур границ, выбрать страну.
+  // valid гейтится манифестом силуэтов (есть не у всех стран — мелкие острова).
+  silhouette: {
+    get label() { return TOPIC_LABELS.silhouette[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.silhouette[getLang()]; },
+    prompt: (c) => ({ type: "silhouette", country: c }),
+    answer: (c) => getName(c),
+    valid: (c) => hasSilhouette(c),
   },
 };
 

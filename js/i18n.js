@@ -307,6 +307,7 @@ export const TOPIC_LABELS = {
   coatOfArms:       { ru: "Герб",               en: "Coat of arms" },
   density:          { ru: "Плотность",          en: "Density" },
   religion:         { ru: "Религия",            en: "Religion" },
+  silhouette:       { ru: "Силуэт",             en: "Silhouette" },
 };
 
 // Язык-зависимые тексты вопросов
@@ -322,6 +323,7 @@ export const TOPIC_QUESTIONS = {
   coatOfArms:       { ru: "Что это за страна?",                          en: "What country is this?" },
   density:          { ru: "Какова плотность населения?",                 en: "What is the population density?" },
   religion:         { ru: "Какая религия преобладает?",                  en: "What is the dominant religion?" },
+  silhouette:       { ru: "Что это за страна?",                          en: "What country is this?" },
 };
 
 // Язык-зависимые названия регионов

@@ -1,6 +1,6 @@
 // Слой данных: загрузка стран из локального data/countries.json и геттеры полей страны.
 
-import { getLang } from "./i18n.js?v=20260564";
+import { getLang } from "./i18n.js?v=20260565";
 
 // Данные стран — локальный файл (обновляется вручную через scripts/fetch_countries.js).
 // Рантайм больше не ходит в restcountries.com: мгновенная загрузка, без внешних зависимостей.
@@ -10,7 +10,11 @@ const COUNTRIES_URL = "data/countries.json";
 // Грузится из data/capitals_ru.json при старте, ключ — код страны cca2.
 const CAPITALS_RU_URL = "data/capitals_ru.json";
 const RELIGIONS_URL = "data/religions.json";
+// Манифест силуэтов: массив cca2, для которых есть data/silhouettes/{cca2}.svg
+// (генерируется scripts/build_silhouettes.js). Тема «Силуэт» гейтится по нему.
+const SILHOUETTES_URL = "data/silhouettes/index.json";
 let capitalsRu = {};
+let silhouetteSet = new Set();
 
 // cca2 -> эмодзи-флаг (fallback, если flags.svg недоступен)
 export function codeToEmoji(cca2) {
@@ -123,6 +127,11 @@ export function hasReligion(country) {
   return !!country.majorReligion;
 }
 
+// Силуэт: есть ли сгенерированный SVG-контур границ для страны (по манифесту).
+export function hasSilhouette(country) {
+  return silhouetteSet.has(country.cca2);
+}
+
 // Плотность населения (жит/км²). lang передаётся явно (как в TOPICS).
 export function getDensityFormatted(country, lang) {
   const d = country.population / country.area;
@@ -192,6 +201,10 @@ export async function fetchCountries() {
   for (const c of data) {
     c.majorReligion = religionsMap[c.cca2] || "";
   }
+
+  // Манифест силуэтов (массив cca2). Не критичен — при сбое тема «Силуэт» просто пустая.
+  const silhouetteArr = await fetch(SILHOUETTES_URL).then((r) => r.json()).catch(() => []);
+  silhouetteSet = new Set(Array.isArray(silhouetteArr) ? silhouetteArr : []);
 
   if (capRes.ok) {
     try {
