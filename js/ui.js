@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260556";
-import { t } from "./i18n.js?v=20260556";
+import { codeToEmoji, officialName } from "./data.js?v=20260557";
+import { t } from "./i18n.js?v=20260557";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -138,8 +138,9 @@ export function renderRegionGrid(items, active, onToggle) {
  * @param {Object} topicDifficulties  — { [topicKey]: difficultyIndex | -1 }
  * @param {Function} getUnlocked      — (topicKey) => Set<number>  (0..3)
  * @param {Function} onSelect         — (topicKey, difficultyIndex) => void
+ * @param {Function|null} getUnlockLevelFn — (topicKey, diffIndex) => number|null (уровень разблокировки)
  */
-export function renderTopicList(items, topicDifficulties, getUnlocked, onSelect) {
+export function renderTopicList(items, topicDifficulties, getUnlocked, onSelect, getUnlockLevelFn = null) {
   const list = document.getElementById("topic-list");
   list.innerHTML = "";
 
@@ -168,6 +169,8 @@ export function renderTopicList(items, topicDifficulties, getUnlocked, onSelect)
       if (!unlocked.has(i)) {
         btn.className = "diff-btn diff-btn-locked";
         btn.disabled = true;
+        const reqLevel = getUnlockLevelFn ? getUnlockLevelFn(key, i) : null;
+        btn.textContent = reqLevel ? "🔒 " + reqLevel : "🔒";
       } else if (selected === i) {
         btn.className = "diff-btn diff-btn-active";
       } else {

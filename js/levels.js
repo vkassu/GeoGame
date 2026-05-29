@@ -74,6 +74,19 @@ export function getXPProgress(xp) {
   return { level, xpInLevel, xpNeeded, percent };
 }
 
+// Минимальный уровень, на котором открывается пара (topicKey, diffIndex).
+// Возвращает число (уровень) или null, если пара не встречается в LEVEL_UNLOCKS.
+export function getUnlockLevel(topicKey, diffIndex) {
+  for (let l = 1; l <= XP_THRESHOLDS.length; l++) {
+    const arr = LEVEL_UNLOCKS[l];
+    if (!arr) continue;
+    for (const u of arr) {
+      if (u.topicKey === topicKey && u.difficultyIndex === diffIndex) return l;
+    }
+  }
+  return null;
+}
+
 // Какие difficultyIndex разблокированы для темы при достигнутом уровне.
 // Аккумулирует все разблокировки темы на уровнях 1..level. Возвращает Set<number>.
 export function getUnlockedDifficulties(topicKey, level) {

@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260556";
+} from "./data.js?v=20260557";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260556";
+} from "./i18n.js?v=20260557";
 import {
   showScreen,
   getPlayAgainButton,
@@ -63,11 +63,11 @@ import {
   renderTasks,
   setDailyCountdownText,
   setTasksBadge,
-} from "./ui.js?v=20260556";
+} from "./ui.js?v=20260557";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
-import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260556";
+import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel, LEVEL_UNLOCKS }
+  from "./levels.js?v=20260557";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -454,7 +454,8 @@ function refreshSetupUI() {
     topicItems,
     state.setup.topicDifficulties,
     (topicKey) => getUnlockedDifficulties(topicKey, userLevel),
-    selectTopicDifficulty
+    selectTopicDifficulty,
+    (topicKey, idx) => getUnlockLevel(topicKey, idx)
   );
   for (const btn of document.querySelectorAll(".count-btn")) {
     btn.textContent = t("count.q", { n: btn.dataset.count });

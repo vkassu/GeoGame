@@ -18,6 +18,81 @@
 
 ---
 
+## 2026-05-26 #34 | Замочек с уровнем разблокировки на заблокированных сложностях
+
+**Цель:** На экране «Темы» заблокированные кнопки сложности показывают 🔒 + номер уровня разблокировки (например «🔒 5»).
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (localhost:5500, level 1 — все 4 шага)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+### 1 — `levels.js`: новая функция `getUnlockLevel(topicKey, diffIndex)`
+Ищет в `LEVEL_UNLOCKS` минимальный уровень для данной пары. Возвращает число или `null`.
+
+### 2 — `main.js`: передать функцию в `renderTopicList` пятым аргументом
+```js
+renderTopicList(items, state.setup.topicDifficulties,
+  (key) => getUnlockedDifficulties(key, getLevelFromXP(state.xpTotal)),
+  selectTopicDifficulty,
+  (key, idx) => getUnlockLevel(key, idx)
+);
+```
+Импортировать `getUnlockLevel` из `./levels.js`.
+
+### 3 — `ui.js`: обновить `renderTopicList` (5-й параметр `getUnlockLevelFn`)
+Для locked-кнопок:
+```js
+const reqLevel = getUnlockLevelFn ? getUnlockLevelFn(key, i) : null;
+btn.textContent = reqLevel ? "🔒 " + reqLevel : "🔒";
+```
+Разблокированные — оставить цифру 1/2/3/4.
+
+### 4 — CSS: если текст не помещается — уменьшить font-size для `.diff-btn-locked`.
+
+### Проверь (localhost:5500)
+1. Заблокированные кнопки: «🔒 3», «🔒 7» с реальными уровнями.
+2. Разблокированные: цифры без замка.
+
+- Cache-busting: обновить `?v=`.
+- `git add -A && git commit -m "feat: show lock icon with required level on locked difficulty buttons"`
+
+На блокерах — стоп, спросить. Не додумывать.
+
+**Результат / расхождения:** Сделано по всем 4 шагам.
+- `levels.js`: добавлена `getUnlockLevel(topicKey, diffIndex)` — линейно ищет минимальный уровень пары в `LEVEL_UNLOCKS`, возвращает число или `null`.
+- `main.js`: импорт `getUnlockLevel`, передан 5-м аргументом в `renderTopicList`.
+- `ui.js`: `renderTopicList` принимает `getUnlockLevelFn = null`; для locked-кнопок `textContent = "🔒 " + reqLevel` (обычный пробел вместо ` ` — на читаемость не влияет, overflow нет). Разблокированные/активные — цифра как прежде.
+- CSS: `.diff-btn-locked` сделана пилюлей авто-ширины (`width:auto; min-width:32px; padding:0 8px; border-radius:16px; font-size:11px; white-space:nowrap`), высота прежняя 32px — «🔒 44» влезает без переполнения (проверено `scrollWidth`). Цвет цифры чуть затемнил для читаемости (#c2cad3→#8a96a3).
+- Проверено на уровне 1: locked-кнопки показывают реальные уровни (capital d0 открыт → «1»; country d0 «🔒 2»; capital d1 «🔒 12» и т.д., согласуется с breadth-first `LEVEL_UNLOCKS`); ширины 42–48px, overflow нет; EN — замки остаются числовыми, метка темы переводится; консоль чистая. Cache-busting 20260556→20260557.
+
+---
+
+## 2026-05-26 #33 | Фавиконка: земной шар 🌍
+
+**Цель:** Добавить SVG-фавиконку с эмодзи земного шара.
+
+**Статус:** передан
+
+**Проверено в браузере:** нет
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+В `index.html` в `<head>` добавить (или заменить существующий `<link rel="icon">`):
+```html
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+```
+Cache-busting не нужен. `git add index.html && git commit -m "feat: add globe favicon"`
+
+**Результат / расхождения:** —
+
+---
+
 ## 2026-05-26 #32 | Техдолг: стухшие строки, мёртвые ключи, хрупкие селекторы, JSDoc
 
 **Цель:** 6 категорий рефакторинга без изменения механики.
