@@ -20,7 +20,7 @@ import {
   hasReligion,
   hasSilhouette,
   hasMapFind,
-} from "./data.js?v=20260566";
+} from "./data.js?v=20260568";
 import {
   getLang,
   setLang,
@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260566";
+} from "./i18n.js?v=20260568";
 import {
   showScreen,
   getPlayAgainButton,
@@ -72,15 +72,16 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260566";
+} from "./ui.js?v=20260568";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260566";
+  from "./levels.js?v=20260568";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260566";
+  from "./achievements.js?v=20260568";
+import { initBackgroundRotation } from "./bg.js?v=20260568";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -1744,6 +1745,7 @@ function renderStatus() {
 async function init() {
   const statusEl = document.getElementById("status");
 
+  initBackgroundRotation();
   loadFromStorage();
   applyI18n();
   updateLangButton();

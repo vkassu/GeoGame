@@ -1,6 +1,6 @@
 :root {
-  /* Локальный fallback фона-глобуса. js/bg.js при старте может заменить на
-     более качественный вариант из интернета (см. REMOTE_URLS). */
+  /* Фолбэк фона: показывается, если ротация (js/bg.js) не сработала
+     или картинка ещё не загрузилась. */
   --earth-bg: url('../img/earth.jpg');
 }
 
@@ -11,54 +11,32 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(to bottom, #0a0a1a, #1a1a2e);
+  background: #0a0a1a; /* тёмная база под фоновыми слоями (до загрузки / в зазорах) */
   color: #e8eaf0;
 }
 
-/* Звёзды — разбросаны по верхней половине */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-image:
-    radial-gradient(1.5px 1.5px at 8vw 12vh, rgba(255,255,255,.7), transparent),
-    radial-gradient(1px 1px at 22vw 6vh, rgba(255,255,255,.5), transparent),
-    radial-gradient(2px 2px at 35vw 18vh, rgba(255,255,255,.6), transparent),
-    radial-gradient(1px 1px at 48vw 9vh, rgba(255,255,255,.5), transparent),
-    radial-gradient(1.5px 1.5px at 61vw 22vh, rgba(255,255,255,.65), transparent),
-    radial-gradient(1px 1px at 73vw 5vh, rgba(255,255,255,.5), transparent),
-    radial-gradient(2px 2px at 86vw 15vh, rgba(255,255,255,.6), transparent),
-    radial-gradient(1px 1px at 93vw 28vh, rgba(255,255,255,.5), transparent),
-    radial-gradient(1.5px 1.5px at 15vw 33vh, rgba(255,255,255,.55), transparent),
-    radial-gradient(1px 1px at 42vw 38vh, rgba(255,255,255,.45), transparent),
-    radial-gradient(1.5px 1.5px at 68vw 35vh, rgba(255,255,255,.55), transparent),
-    radial-gradient(1px 1px at 80vw 40vh, rgba(255,255,255,.45), transparent);
-}
-
-/* Глобус Земли снизу — реальный снимок NASA (Public Domain) */
+/* Полноэкранные фоновые сцены с плавным crossfade (#44).
+   Два слоя-псевдоэлемента: ::before (--bg-0) и ::after (--bg-1). js/bg.js пишет
+   новую картинку в скрытый слой и переключает класс .bg-toggle — слои перетекают
+   друг в друга (opacity 1.5s). Раньше тут были звёзды + глобус (космос-стиль). */
+body::before,
 body::after {
   content: "";
   position: fixed;
-  left: 50%;
-  bottom: -35vw;
-  transform: translateX(-50%);
-  width: 100vw;
-  height: 100vw;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
-  border-radius: 50%;
-  background-image: var(--earth-bg);
-  background-size: cover;
-  background-position: center 30%;
-  /* Атмосферное свечение поверх фото */
-  box-shadow:
-    0 0 60px 10px rgba(60, 140, 200, 0.45),
-    0 0 120px 20px rgba(30, 80, 140, 0.30),
-    inset 0 -20px 60px rgba(0, 0, 0, 0.5);
+  background-size: cover;        /* корректно работает на iPhone/iPad */
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 1.5s ease;
 }
+body::before { background-image: var(--bg-0, var(--earth-bg)); opacity: 1; }
+body::after  { background-image: var(--bg-1, var(--earth-bg)); opacity: 0; }
+/* Переключение видимого слоя — crossfade между ::before и ::after. */
+body.bg-toggle::before { opacity: 0; }
+body.bg-toggle::after  { opacity: 1; }
+
 .topbar {
   position: relative;
   display: flex;
