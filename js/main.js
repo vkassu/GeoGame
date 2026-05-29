@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260557";
+} from "./data.js?v=20260558";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260557";
+} from "./i18n.js?v=20260558";
 import {
   showScreen,
   getPlayAgainButton,
@@ -63,11 +63,12 @@ import {
   renderTasks,
   setDailyCountdownText,
   setTasksBadge,
-} from "./ui.js?v=20260557";
+} from "./ui.js?v=20260558";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
-import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel, LEVEL_UNLOCKS }
-  from "./levels.js?v=20260557";
+import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
+         initLevelUnlocks, getUnlocksForLevel }
+  from "./levels.js?v=20260558";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -167,6 +168,10 @@ const TOPICS = {
 
 // Все темы используют одну шкалу сложностей (TOPICS[key].difficulties[idx].choicesCount).
 Object.values(TOPICS).forEach((topic) => { topic.difficulties = DIFFICULTIES; });
+
+// Уровни разблокировки строятся из порядка тем в TOPICS (единый источник правды) —
+// замки в UI идут строго по возрастанию сверху вниз. См. CLAUDE.md «Соглашения в коде».
+initLevelUnlocks(Object.keys(TOPICS));
 
 // Регионы: ключ → { label (геттер, lang-aware), apiValue }. apiValue сверяется с country.region.
 const REGIONS = {
@@ -790,7 +795,7 @@ function goToResult() {
     state.xpTotal,
     getXPProgress,
     (newLevel) => {
-      const unlocks = LEVEL_UNLOCKS[newLevel] || [];
+      const unlocks = getUnlocksForLevel(newLevel);
       const labels = unlocks.map(({ topicKey, difficultyIndex }) => {
         const topicLabel = TOPICS[topicKey]?.label ?? topicKey;
         return topicLabel + " (" + (difficultyIndex + 1) + ")";

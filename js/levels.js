@@ -22,29 +22,35 @@ export const XP_THRESHOLDS = (() => {
 // Таблица разблокировок: уровень → [{ topicKey, difficultyIndex }].
 // difficultyIndex: 0=4 варианта, 1=6, 2=8, 3=10.
 // Прогрессия «вширь»: сперва все темы на лёгкой сложности (0), затем поднимаем
-// сложность для всех тем (1 → 2 → 3). capital идёт первым, поэтому уровень 1 даёт
-// { topicKey: "capital", difficultyIndex: 0 } — как требует ТЗ.
+// сложность для всех тем (1 → 2 → 3).
 //
-// ⚠️ Заглушка-ограничение: 9 тем × 4 сложности = 36 уникальных разблокировок,
-// а уровней 50. Поэтому новые разблокировки заканчиваются на уровне 36; уровни
-// 37–50 существуют по XP-кривой, но нового контента не открывают (всё уже открыто).
-// «Каждый из 50 уровней что-то открывает» физически недостижимо при 36 комбинациях —
-// баланс/наполнение поздних уровней (награды, сундуки) — отдельная задача (#17Б+).
-const TOPIC_ORDER = [
-  "capital", "country", "countryByCapital", "population", "area",
-  "language", "currency", "density", "religion", "nativeName", "coatOfArms",
-];
-export const LEVEL_UNLOCKS = (() => {
-  const unlocks = {};
+// ⚠️ Порядок тем НЕ хардкодится здесь: он берётся из Object.keys(TOPICS) в main.js
+// через initLevelUnlocks() (вызов сразу после определения TOPICS). Так визуальный
+// порядок тем в UI и порядок разблокировок по уровням всегда совпадают — замки идут
+// строго по возрастанию сверху вниз. Единый источник правды — TOPICS в main.js.
+//
+// ⚠️ Заглушка-ограничение: 11 тем × 4 сложности = 44 уникальные разблокировки, а
+// уровней 50. Поэтому новые разблокировки заканчиваются на уровне 44; уровни 45–50
+// существуют по XP-кривой, но нового контента не открывают (всё уже открыто).
+// Баланс/наполнение поздних уровней (награды, сундуки) — отдельная задача (#17Б+).
+let LEVEL_UNLOCKS = {};
+
+// Строит таблицу разблокировок из переданного порядка тем (Object.keys(TOPICS)).
+export function initLevelUnlocks(topicOrder) {
+  LEVEL_UNLOCKS = {};
   let level = 1;
   for (let d = 0; d <= 3; d++) {
-    for (const topicKey of TOPIC_ORDER) {
-      unlocks[level] = [{ topicKey, difficultyIndex: d }];
+    for (const topicKey of topicOrder) {
+      LEVEL_UNLOCKS[level] = [{ topicKey, difficultyIndex: d }];
       level++;
     }
   }
-  return unlocks; // 11 тем × 4 сложности = уровни 1..44
-})();
+}
+
+// Разблокировки на конкретном уровне (или пустой массив).
+export function getUnlocksForLevel(level) {
+  return LEVEL_UNLOCKS[level] || [];
+}
 
 // Уровень пользователя из суммарного XP (≥ 1).
 export function getLevelFromXP(xp) {

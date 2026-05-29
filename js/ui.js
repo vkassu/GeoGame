@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260557";
-import { t } from "./i18n.js?v=20260557";
+import { codeToEmoji, officialName } from "./data.js?v=20260558";
+import { t } from "./i18n.js?v=20260558";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
