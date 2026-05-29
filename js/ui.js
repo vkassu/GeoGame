@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260569";
-import { t } from "./i18n.js?v=20260569";
+import { codeToEmoji, officialName } from "./data.js?v=20260570";
+import { t } from "./i18n.js?v=20260570";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -401,6 +401,7 @@ async function renderMapFind(country, flagEl) {
   for (const c of data.countries) {
     const isTarget = c.cca2 === target;
     if (isTarget) tc = c;
+    if (!c.d) continue; // dot-only страна (нет геометрии в Natural Earth) — путь не рисуем
     const p = document.createElementNS(NS, "path");
     p.setAttribute("d", c.d);
     p.setAttribute("class", "map-country" + (isTarget ? " map-country--highlight" : ""));
@@ -408,10 +409,26 @@ async function renderMapFind(country, flagEl) {
   }
 
   if (tc) {
-    const [x0, y0, x1, y1] = tc.bbox;
-    const bw = x1 - x0, bh = y1 - y0;
     const [cx, cy] = tc.c;
-    if (bw < 8 || bh < 8) {
+    let useDot = !!tc.dotOnly; // dot-only страны всегда точкой
+    if (tc.bbox) {
+      const [x0, y0, x1, y1] = tc.bbox;
+      const bw = x1 - x0, bh = y1 - y0;
+      if (bw < 8 || bh < 8) useDot = true; // микрогосударство — тоже точкой
+      // Автозум к реальной геометрии
+      const PAD = 0.5, MIN = 80;
+      let zx0 = x0, zy0 = y0;
+      let zw = Math.max(bw, MIN), zh = Math.max(bh, MIN);
+      if (zw === MIN) zx0 = cx - MIN / 2;
+      if (zh === MIN) zy0 = cy - MIN / 2;
+      const px = zw * PAD, py = zh * PAD;
+      svg.setAttribute("viewBox", `${zx0 - px} ${zy0 - py} ${zw + px * 2} ${zh + py * 2}`);
+    } else {
+      // dot-only: фиксированный зум вокруг центроида
+      const SIZE = 120;
+      svg.setAttribute("viewBox", `${cx - SIZE} ${cy - SIZE / 2} ${SIZE * 2} ${SIZE}`);
+    }
+    if (useDot) {
       const dot = document.createElementNS(NS, "circle");
       dot.setAttribute("cx", cx);
       dot.setAttribute("cy", cy);
@@ -419,13 +436,6 @@ async function renderMapFind(country, flagEl) {
       dot.setAttribute("class", "map-country-dot--highlight");
       svg.appendChild(dot);
     }
-    const PAD = 0.5, MIN = 80;
-    let zx0 = x0, zy0 = y0;
-    let zw = Math.max(bw, MIN), zh = Math.max(bh, MIN);
-    if (zw === MIN) zx0 = cx - MIN / 2;
-    if (zh === MIN) zy0 = cy - MIN / 2;
-    const px = zw * PAD, py = zh * PAD;
-    svg.setAttribute("viewBox", `${zx0 - px} ${zy0 - py} ${zw + px * 2} ${zh + py * 2}`);
   } else {
     svg.setAttribute("viewBox", `0 0 ${data.w} ${data.h}`);
   }

@@ -35,6 +35,9 @@ const GEOJSON_URL =
 const COUNTRIES = path.join(__dirname, "..", "data", "countries.json");
 const MAP_OUT = path.join(__dirname, "..", "data", "worldmap.json");
 const IDX_OUT = path.join(__dirname, "..", "data", "worldmap_index.json");
+// Ручные центроиды [lon,lat] для стран без отдельной геометрии в Natural Earth
+// (заморские территории Франции, крошечные острова). Добавляются как dot-only (#45).
+const MISSING = path.join(__dirname, "..", "data", "missing_centroids.json");
 
 const W = 960, H = 500, SCALE = 153, TX = W / 2, TY = H / 2;
 const DEG = Math.PI / 180;
@@ -50,10 +53,13 @@ function project(lon, lat) {
   return [TX + SCALE * x, TY - SCALE * y];
 }
 
-function isoCode(pr) {
-  let c = pr.ISO_A2;
-  if (!c || c === "-99") c = pr.ISO_A2_EH;
-  return c && c !== "-99" ? c : null;
+// cca2: ISO_A2 только если валидный 2-буквенный код, иначе фолбэк ISO_A2_EH.
+// Ловит мусор вроде Тайваня ("CN-TW" в ISO_A2, "TW" в ISO_A2_EH) (#45).
+function getCca2(pr) {
+  const ok = (v) => typeof v === "string" && /^[A-Z]{2}$/.test(v);
+  if (ok(pr.ISO_A2)) return pr.ISO_A2;
+  if (ok(pr.ISO_A2_EH)) return pr.ISO_A2_EH;
+  return null;
 }
 
 // Список полигонов (каждый — массив колец [ext, ...holes]) из geometry.
@@ -75,7 +81,7 @@ async function main() {
   // Группируем все полигоны по коду (несколько feature на код → сливаем).
   const byCode = new Map();
   for (const f of gj.features) {
-    const code = isoCode(f.properties);
+    const code = getCca2(f.properties);
     if (!code || !want.has(code)) continue;
     const polys = polygonsOf(f.geometry);
     if (!polys.length) continue;
@@ -115,6 +121,24 @@ async function main() {
       bbox: [r1(best.x0), r1(best.y0), r1(best.x1), r1(best.y1)],
       c: [r1((best.x0 + best.x1) / 2), r1((best.y0 + best.y1) / 2)],
     });
+  }
+
+  // Страны без геометрии в Natural Earth → dot-only записи по ручным центроидам.
+  // Только те, что есть в countries.json и не нашлись в GeoJSON. У них нет `d`/`bbox`,
+  // только спроецированный центр `c` и флаг dotOnly — UI рисует их точкой (#45).
+  const found = new Set(countries.map((c) => c.cca2));
+  let dotCount = 0;
+  let missingCentroids = {};
+  try { missingCentroids = JSON.parse(readFileSync(MISSING, "utf8")); } catch { /* нет файла — пропускаем */ }
+  for (const [codeRaw, lonlat] of Object.entries(missingCentroids)) {
+    const code = String(codeRaw).toUpperCase();
+    if (!want.has(code) || found.has(code)) continue;
+    if (!Array.isArray(lonlat) || lonlat.length !== 2) continue;
+    const [cx, cy] = project(lonlat[0], lonlat[1]);
+    countries.push({ cca2: code, c: [r1(cx), r1(cy)], dotOnly: true });
+    found.add(code);
+    dotCount++;
+    console.log(`  [missing_centroids] dot-only: ${code}`);
   }
 
   countries.sort((a, b) => a.cca2.localeCompare(b.cca2));

@@ -36,11 +36,14 @@ const VIEW = 200;
 const PAD = 10;
 const INNER = VIEW - PAD * 2; // 180
 
-// cca2 страны из свойств feature (с фолбэком на ISO_A2_EH).
-function isoCode(pr) {
-  let c = pr.ISO_A2;
-  if (!c || c === "-99") c = pr.ISO_A2_EH;
-  return c && c !== "-99" ? c : null;
+// cca2 страны: берём ISO_A2, только если это валидный 2-буквенный код, иначе фолбэк
+// на ISO_A2_EH. ⚠️ У части стран ISO_A2 — мусор (Тайвань: "CN-TW"), а нормальный код
+// лежит в ISO_A2_EH ("TW"). Проверка формата (а не только !== "-99") это ловит (#45).
+function getCca2(pr) {
+  const ok = (v) => typeof v === "string" && /^[A-Z]{2}$/.test(v);
+  if (ok(pr.ISO_A2)) return pr.ISO_A2;
+  if (ok(pr.ISO_A2_EH)) return pr.ISO_A2_EH;
+  return null;
 }
 
 // Все кольца (массивы точек [lon,lat]) из geometry — для Polygon и MultiPolygon.
@@ -68,7 +71,7 @@ async function main() {
   // с самой крупной геометрией (по числу точек), иначе силуэт = крошечный остров.
   const byCode = new Map();
   for (const f of gj.features) {
-    const code = isoCode(f.properties);
+    const code = getCca2(f.properties);
     if (!code || !want.has(code)) continue;
     const rings = ringsOf(f.geometry);
     if (!rings.length) continue;
