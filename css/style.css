@@ -254,6 +254,12 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   display: flex;
   gap: 8px;
 }
+.start-hint {
+  text-align: center;
+  color: #ef4444;
+  font-size: 13px;
+  margin-top: 6px;
+}
 .nav-btn {
   flex: 1;
   padding: 12px;

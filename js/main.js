@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260562";
+} from "./data.js?v=20260563";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260562";
+} from "./i18n.js?v=20260563";
 import {
   showScreen,
   getPlayAgainButton,
@@ -70,15 +70,15 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260562";
+} from "./ui.js?v=20260563";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260562";
+  from "./levels.js?v=20260563";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260562";
+  from "./achievements.js?v=20260563";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -520,6 +520,22 @@ function refreshSetupUI() {
   renderAvailableCount(available === null ? "—" : available);
   // «Начало» активна только если есть хотя бы один реальный вопрос.
   setNavButtonEnabled("regions-next", state.dataLoaded && available > 0);
+  // Подсказка под кнопкой: почему нельзя начать.
+  const hintEl = document.getElementById("start-hint");
+  if (hintEl) {
+    const noRegions = state.setup.regions.length === 0;
+    const noTopics = Object.values(state.setup.topicDifficulties).every((v) => v < 0);
+    if (state.dataLoaded && questionPairs().length === 0) {
+      let key;
+      if (noRegions && noTopics) key = "start.hint.both";
+      else if (noTopics) key = "start.hint.notopics";
+      else key = "start.hint.noregions";
+      hintEl.textContent = t(key);
+      hintEl.style.display = "";
+    } else {
+      hintEl.style.display = "none";
+    }
+  }
 }
 
 function selectQuestionCountAndStart(n) {
