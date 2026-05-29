@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260560";
+} from "./data.js?v=20260561";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260560";
+} from "./i18n.js?v=20260561";
 import {
   showScreen,
   getPlayAgainButton,
@@ -66,15 +66,19 @@ import {
   setTasksBadge,
   renderAchievements,
   setAchievementsBadge,
-} from "./ui.js?v=20260560";
+  showAchievementPopup,
+  hideAchievementPopup,
+  showXpRewardPopup,
+  hideXpRewardPopup,
+} from "./ui.js?v=20260561";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260560";
+  from "./levels.js?v=20260561";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260560";
+  from "./achievements.js?v=20260561";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -319,6 +323,7 @@ const state = {
   speedCount: 0,           // ответов быстрее 5 сек в сессии (для mastery:speed)
   questionStartTime: 0,    // время показа текущего вопроса (для mastery:speed)
   bonusXpCredited: 0,      // фактически начисленный XP за бонусную ячейку (с учётом бонуса достижений)
+  achievementQueue: [],    // очередь попапов новых уровней достижений
   setup: {
     regions: [...DEFAULT_REGIONS],
     topicDifficulties: { ...DEFAULT_TOPIC_DIFFICULTIES }, // { topicKey: -1..3 }, -1 = выключено
@@ -1218,15 +1223,38 @@ function persistInventory()  { localStorage.setItem(STORAGE.inventory, JSON.stri
 function persistXp()         { localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal)); }
 function persistAchievements() { localStorage.setItem(STORAGE.achievements, JSON.stringify(state.achievements)); }
 
-// Начислить награды за новые уровни достижений (сундуки), сохранить и зажечь бейдж.
+// Начислить награды за новые уровни достижений (сундуки), сохранить, зажечь бейдж
+// и поставить попапы в очередь (показываются по одному, по кнопке «Далее»).
+let achievementPopupActive = false;
 function handleNewAchievementLevels(newLevels) {
-  for (const { reward } of newLevels) {
+  for (const { key, newLevel, reward } of newLevels) {
+    const def = ACHIEVEMENT_DEFS[key];
+    const name = def.name[getLang()];
+    const maxLevel = def.maxLevel || 1;
+    const stars = "★".repeat(newLevel) + "☆".repeat(Math.max(0, maxLevel - newLevel));
+    const rewardStr = reward?.chests
+      ? `+${reward.chests} 🧰`
+      : (def.xpBonusPerLevel ? t("achievements.xp-bonus", { n: newLevel * def.xpBonusPerLevel }) : "");
+    state.achievementQueue.push({
+      icon: def.icon || "🏆",
+      name,
+      levelStr: t("achievements.level", { n: newLevel }) + "  " + stars,
+      rewardStr,
+    });
     if (reward?.chests) state.inventory.chests += reward.chests;
   }
   persistAchievements();
   persistInventory();
   localStorage.setItem(STORAGE.achievementsNew, "true");
   setAchievementsBadge(true);
+  if (!achievementPopupActive) drainAchievementQueue();
+}
+
+// Показать следующий попап из очереди (или завершить, если пусто).
+function drainAchievementQueue() {
+  if (!state.achievementQueue.length) { achievementPopupActive = false; return; }
+  achievementPopupActive = true;
+  showAchievementPopup(state.achievementQueue.shift());
 }
 
 // --- Дейлик (сброс по дате) ---
@@ -1242,7 +1270,10 @@ function formatCountdown(ms) {
 }
 function claimDailyPrize() {
   if (!isDailyPrizeAvailable()) return;
-  state.xpTotal += applyBonus(DAILY_PRIZE_XP, getAchievementBonus(state.achievements));
+  const xpBefore = state.xpTotal;
+  const bonus = getAchievementBonus(state.achievements);
+  const earned = applyBonus(DAILY_PRIZE_XP, bonus);
+  state.xpTotal += earned;
   state.inventory.chests += DAILY_PRIZE_CHESTS;
   state.dailyPrize.lastClaimDate = getTodayString();
   persistXp();
@@ -1255,6 +1286,7 @@ function claimDailyPrize() {
   startTasksTimer();      // перезапустить тикер для нового отсчёта
   renderTasksScreen();
   refreshMenuScreen();
+  showXpRewardPopup({ earnedXp: earned, bonusPercent: bonus, xpBefore, xpAfter: state.xpTotal, getXPProgress });
 }
 
 // --- Стрик ---
@@ -1343,7 +1375,10 @@ function claimQuest(id) {
   if (!q || !q.completed || q.claimed) return;
   q.claimed = true;
   const reward = QUEST_REWARDS[q.tier] || { xp: 0, chests: 0 };
-  state.xpTotal += applyBonus(reward.xp, getAchievementBonus(state.achievements));
+  const xpBefore = state.xpTotal;
+  const bonus = getAchievementBonus(state.achievements);
+  const earned = applyBonus(reward.xp, bonus);
+  state.xpTotal += earned;
   state.inventory.chests += reward.chests;
   persistXp();
   persistInventory();
@@ -1353,6 +1388,7 @@ function claimQuest(id) {
   }
   renderTasksScreen();
   refreshMenuScreen();
+  showXpRewardPopup({ earnedXp: earned, bonusPercent: bonus, xpBefore, xpAfter: state.xpTotal, getXPProgress });
 }
 
 // Есть ли что забрать (для бейджа в меню): доступен дейлик ИЛИ есть готовое незабранное задание.
@@ -1678,6 +1714,14 @@ async function init() {
   document.getElementById("tasks-back")?.addEventListener("click", () => { clearTasksTimer(); goToMenu(); });
   document.getElementById("menu-achievements-btn")?.addEventListener("click", goToAchievements);
   document.getElementById("achievements-back-btn")?.addEventListener("click", goToMenu);
+
+  // Попап достижения: «Далее» → скрыть и показать следующий из очереди.
+  document.getElementById("ach-next-btn")?.addEventListener("click", () => {
+    hideAchievementPopup();
+    drainAchievementQueue();
+  });
+  // Попап XP-награды: «OK» → скрыть.
+  document.getElementById("xpr-ok-btn")?.addEventListener("click", hideXpRewardPopup);
   document.getElementById("menu-memory-btn")?.addEventListener("click", () => console.log("Memory game: coming soon"));
   document.getElementById("menu-auth-btn").addEventListener("click", () => {
     if (state.user) signOutUser();

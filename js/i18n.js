@@ -133,6 +133,10 @@ const STRINGS = {
     "achievements.cat.mastery":  "Мастерство",
     "achievements.level":        "Ур. {n}",
     "achievements.xp-bonus":     "+{n}% к XP",
+    "ach.popup.title":   "Новое достижение!",
+    "ach.popup.next":    "Далее",
+    "ach.xp-bonus-line": "+{n}% бонус достижений",
+    "common.ok":         "OK",
   },
   en: {
     "status.loading": "Loading data…",
@@ -260,6 +264,10 @@ const STRINGS = {
     "achievements.cat.mastery":  "Mastery",
     "achievements.level":        "Lv. {n}",
     "achievements.xp-bonus":     "+{n}% XP",
+    "ach.popup.title":   "Achievement Unlocked!",
+    "ach.popup.next":    "Next",
+    "ach.xp-bonus-line": "+{n}% achievement bonus",
+    "common.ok":         "OK",
   },
 };
 

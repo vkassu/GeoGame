@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260560";
-import { t } from "./i18n.js?v=20260560";
+import { codeToEmoji, officialName } from "./data.js?v=20260561";
+import { t } from "./i18n.js?v=20260561";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -210,19 +210,33 @@ export function renderXPBar(xpProgress) {
  *  - новый (жёлто-зелёный) = заработанное за сессию, анимируется.
  * При level-up старый сегмент обнуляется (на новом уровне «до сессии» прогресса нет).
  * getXPProgress принимается параметром, чтобы не создавать зависимость ui.js → levels.js.
- * @param {number} durationMs — длительность анимации, default 2400 (×2 от прежних 1200)
+ * @param {number} durationMs — длительность анимации (по умолчанию 2400)
+ * @param {Object} [els] — кастомные DOM-элементы { oldEl, newEl, caption, levelFrom, levelTo }
+ *                         (по умолчанию — элементы экрана результата по id). Любой может быть null.
  */
-export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationMs = 2400) {
-  const oldEl = document.getElementById("xp-bar-old");
-  const newEl = document.getElementById("xp-bar-new");
-  const caption = document.getElementById("xp-bar-caption");
-  const levelFrom = document.getElementById("xp-level-from");
-  const levelTo = document.getElementById("xp-level-to");
+export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationMs = 2400, els) {
+  const oldEl     = els ? els.oldEl     : document.getElementById("xp-bar-old");
+  const newEl     = els ? els.newEl     : document.getElementById("xp-bar-new");
+  const caption   = els ? els.caption   : document.getElementById("xp-bar-caption");
+  const levelFrom = els ? els.levelFrom : document.getElementById("xp-level-from");
+  const levelTo   = els ? els.levelTo   : document.getElementById("xp-level-to");
 
   const startLevel = getXPProgress(startXP).level;
   const startPercent = getXPProgress(startXP).percent; // «старый» прогресс в стартовом уровне
   let lastFiredLevel = startLevel;
   const start = performance.now();
+
+  function paint(prog) {
+    // Старый сегмент: если ещё в стартовом уровне — это докризисный прогресс; после
+    // перехода уровня старого прогресса в новом уровне нет (всё «новое»).
+    const oldPercent = prog.level === startLevel ? startPercent : 0;
+    const newPercent = Math.max(0, prog.percent - oldPercent);
+    if (levelFrom) levelFrom.textContent = String(prog.level);
+    if (levelTo) levelTo.textContent = String(prog.level + 1);
+    if (oldEl) oldEl.style.width = (oldPercent * 100).toFixed(1) + "%";
+    if (newEl) newEl.style.width = (newPercent * 100).toFixed(1) + "%";
+    if (caption) caption.textContent = prog.xpInLevel + " / " + prog.xpNeeded + " XP";
+  }
 
   function tick(now) {
     const elapsed = now - start;
@@ -230,27 +244,15 @@ export function animateXPBar(startXP, endXP, getXPProgress, onLevelUp, durationM
     const eased = 1 - Math.pow(1 - t, 3); // ease-out
     const currentXP = Math.round(startXP + (endXP - startXP) * eased);
     const prog = getXPProgress(currentXP);
-
-    // Старый сегмент: если ещё в стартовом уровне — это докризисный прогресс; после
-    // перехода уровня старого прогресса в новом уровне нет (всё «новое»).
-    const oldPercent = prog.level === startLevel ? startPercent : 0;
-    const newPercent = Math.max(0, prog.percent - oldPercent);
-
-    levelFrom.textContent = String(prog.level);
-    levelTo.textContent = String(prog.level + 1);
-    oldEl.style.width = (oldPercent * 100).toFixed(1) + "%";
-    newEl.style.width = (newPercent * 100).toFixed(1) + "%";
-    caption.textContent = prog.xpInLevel + " / " + prog.xpNeeded + " XP";
-
+    paint(prog);
     if (prog.level > lastFiredLevel) {
       lastFiredLevel = prog.level;
       onLevelUp(prog.level);
     }
-
     if (t < 1) requestAnimationFrame(tick);
   }
 
-  renderXPBar(getXPProgress(startXP));
+  paint(getXPProgress(startXP));
   requestAnimationFrame(tick);
 }
 
@@ -961,4 +963,113 @@ function buildAchItem(item) {
 export function setAchievementsBadge(show) {
   const badge = document.getElementById("menu-achievements-badge");
   if (badge) badge.hidden = !show;
+}
+
+// ---- Попап достижения (конфетти + звук) ----
+
+// Конфетти на Canvas без библиотек. Возвращает функцию остановки.
+function startConfetti(canvas) {
+  const ctx = canvas.getContext("2d");
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const particles = Array.from({ length: 60 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    r: Math.random() * 6 + 3,
+    color: ["#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#a855f7"][Math.floor(Math.random() * 5)],
+    speed: Math.random() * 2 + 1, swing: Math.random() * 2 - 1, angle: 0,
+  }));
+  let frame; const end = Date.now() + 3000;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.angle += 0.05; p.x += Math.sin(p.angle) * p.swing; p.y += p.speed;
+      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
+      ctx.fillStyle = p.color; ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r, p.r / 2, p.angle, 0, Math.PI * 2); ctx.fill();
+    }
+    if (Date.now() < end) frame = requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
+  return () => cancelAnimationFrame(frame);
+}
+
+// Короткий мажорный аккорд (Web Audio API, без файлов).
+function playAchievementSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "sine"; osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t); osc.stop(t + 0.35);
+    });
+  } catch (e) {}
+}
+
+let stopConfetti = null;
+
+/**
+ * Показывает попап нового достижения.
+ * @param {Object} data — { icon, name, levelStr, rewardStr }
+ */
+export function showAchievementPopup({ icon, name, levelStr, rewardStr }) {
+  document.getElementById("ach-icon").textContent = icon;
+  document.getElementById("ach-name").textContent = name;
+  document.getElementById("ach-level").textContent = levelStr;
+  const rewardEl = document.getElementById("ach-reward");
+  rewardEl.textContent = rewardStr || "";
+  rewardEl.style.display = rewardStr ? "" : "none";
+
+  const popup = document.getElementById("achievement-popup");
+  popup.style.display = "flex";
+
+  if (stopConfetti) stopConfetti();
+  const canvas = document.getElementById("ach-confetti");
+  stopConfetti = startConfetti(canvas);
+  playAchievementSound();
+}
+
+export function hideAchievementPopup() {
+  if (stopConfetti) { stopConfetti(); stopConfetti = null; }
+  document.getElementById("achievement-popup").style.display = "none";
+}
+
+// ---- Попап XP-награды (дейлик/квесты) ----
+
+/**
+ * Показывает попап XP-награды с анимацией бара.
+ * @param {Object} opts — { earnedXp, bonusPercent, xpBefore, xpAfter, getXPProgress }
+ */
+export function showXpRewardPopup({ earnedXp, bonusPercent, xpBefore, xpAfter, getXPProgress }) {
+  document.getElementById("xpr-amount").textContent = "+" + earnedXp + " XP";
+  const bonusEl = document.getElementById("xpr-bonus");
+  if (bonusPercent > 0) {
+    bonusEl.textContent = t("ach.xp-bonus-line", { n: bonusPercent });
+    bonusEl.style.display = "";
+  } else {
+    bonusEl.style.display = "none";
+  }
+  const levelupEl = document.getElementById("xpr-levelup");
+  levelupEl.style.display = "none";
+  levelupEl.textContent = "🎉 " + t("level.up");
+
+  document.getElementById("xp-reward-popup").style.display = "flex";
+
+  animateXPBar(xpBefore, xpAfter, getXPProgress, () => {
+    levelupEl.style.display = "";
+  }, 1200, {
+    oldEl: document.getElementById("xpr-bar-old"),
+    newEl: document.getElementById("xpr-bar-new"),
+    caption: document.getElementById("xpr-bar-label"),
+    levelFrom: null, levelTo: null,
+  });
+}
+
+export function hideXpRewardPopup() {
+  document.getElementById("xp-reward-popup").style.display = "none";
 }

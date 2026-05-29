@@ -17,15 +17,18 @@ const XP_CHESTS = [2, 3, 5, 8, 12, 20, 30, 50, 80, 150];
 // Поля def: category, name {ru,en}, maxLevel, thresholds[], xpBonusPerLevel, chestRewards[]|null.
 export const ACHIEVEMENT_DEFS = {};
 
+// Эмодзи-иконка категории (для попапа достижения).
+export const ACH_CATEGORY_ICON = { region: "🌍", topic: "🧩", volume: "📊", mastery: "🏆" };
+
 function addMulti(key, category, ru, en) {
   ACHIEVEMENT_DEFS[key] = {
-    category, name: { ru, en }, maxLevel: 10,
+    category, name: { ru, en }, icon: ACH_CATEGORY_ICON[category], maxLevel: 10,
     thresholds: MULTI_THRESHOLDS, xpBonusPerLevel: 1, chestRewards: null,
   };
 }
 function addMastery(key, ru, en) {
   ACHIEVEMENT_DEFS[key] = {
-    category: "mastery", name: { ru, en }, maxLevel: 1,
+    category: "mastery", name: { ru, en }, icon: ACH_CATEGORY_ICON.mastery, maxLevel: 1,
     thresholds: [1], xpBonusPerLevel: 0, chestRewards: [10],
   };
 }
@@ -52,11 +55,11 @@ addMulti("topic:religion",         "topic", "Теолог",     "Theologian");
 
 // --- Категория volume (2) ---
 ACHIEVEMENT_DEFS["volume:games"] = {
-  category: "volume", name: { ru: "Путешественник", en: "Traveler" },
+  category: "volume", name: { ru: "Путешественник", en: "Traveler" }, icon: ACH_CATEGORY_ICON.volume,
   maxLevel: 10, thresholds: GAMES_THRESHOLDS, xpBonusPerLevel: 0, chestRewards: GAMES_CHESTS,
 };
 ACHIEVEMENT_DEFS["volume:xp"] = {
-  category: "volume", name: { ru: "Эрудит", en: "Scholar" },
+  category: "volume", name: { ru: "Эрудит", en: "Scholar" }, icon: ACH_CATEGORY_ICON.volume,
   maxLevel: 10, thresholds: XP_VOL_THRESHOLDS, xpBonusPerLevel: 0, chestRewards: XP_CHESTS,
 };
 

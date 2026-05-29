@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='g' cx='50%25' cy='42%25' r='62%25'><stop offset='0%25' stop-color='%23fff7c2'/><stop offset='45%25' stop-color='%23ffd23f'/><stop offset='100%25' stop-color='%23f7971e'/></radialGradient></defs><path fill='url(%23g)' stroke='%23e08600' stroke-width='3' stroke-linejoin='round' d='M50 6 61.8 37.6 95.1 39.5 69 60.4 77.9 92.5 50 73.6 22.1 92.5 31 60.4 4.9 39.5 38.2 37.6Z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=20260560">
+  <link rel="stylesheet" href="css/style.css?v=20260561">
 </head>
 <body>
   <header class="topbar">
@@ -334,6 +334,36 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260560"></script>
+  <!-- Попап нового достижения -->
+  <div id="achievement-popup" class="achievement-popup" style="display:none">
+    <div class="achievement-popup__card">
+      <canvas class="achievement-popup__confetti" id="ach-confetti"></canvas>
+      <div class="achievement-popup__icon" id="ach-icon">🏆</div>
+      <div class="achievement-popup__title" data-i18n="ach.popup.title">Новое достижение!</div>
+      <div class="achievement-popup__name" id="ach-name"></div>
+      <div class="achievement-popup__level" id="ach-level"></div>
+      <div class="achievement-popup__reward" id="ach-reward"></div>
+      <button class="achievement-popup__btn" id="ach-next-btn" data-i18n="ach.popup.next">Далее</button>
+    </div>
+  </div>
+
+  <!-- Попап XP-награды (дейлик/квесты) -->
+  <div id="xp-reward-popup" class="xp-reward-popup" style="display:none">
+    <div class="xp-reward-popup__card">
+      <div class="xp-reward-popup__amount" id="xpr-amount"></div>
+      <div class="xp-reward-popup__bonus"  id="xpr-bonus"></div>
+      <div class="xp-bar-wrap" style="margin:16px 0">
+        <div class="xp-bar-bg">
+          <div class="xp-bar-old" id="xpr-bar-old"></div>
+          <div class="xp-bar-new" id="xpr-bar-new"></div>
+        </div>
+        <div class="xp-bar-label" id="xpr-bar-label"></div>
+      </div>
+      <div class="xp-reward-popup__levelup" id="xpr-levelup" style="display:none">🎉 Новый уровень!</div>
+      <button id="xpr-ok-btn" class="achievement-popup__btn" data-i18n="common.ok">OK</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js?v=20260561"></script>
 </body>
 </html>
