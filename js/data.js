@@ -1,6 +1,6 @@
 // Слой данных: загрузка стран из локального data/countries.json и геттеры полей страны.
 
-import { getLang } from "./i18n.js?v=20260565";
+import { getLang } from "./i18n.js?v=20260566";
 
 // Данные стран — локальный файл (обновляется вручную через scripts/fetch_countries.js).
 // Рантайм больше не ходит в restcountries.com: мгновенная загрузка, без внешних зависимостей.
@@ -13,8 +13,12 @@ const RELIGIONS_URL = "data/religions.json";
 // Манифест силуэтов: массив cca2, для которых есть data/silhouettes/{cca2}.svg
 // (генерируется scripts/build_silhouettes.js). Тема «Силуэт» гейтится по нему.
 const SILHOUETTES_URL = "data/silhouettes/index.json";
+// Манифест карты: массив cca2, для которых есть геометрия в data/worldmap.json
+// (генерируется scripts/build_worldmap.js). Тема «Найди на карте» гейтится по нему.
+const WORLDMAP_INDEX_URL = "data/worldmap_index.json";
 let capitalsRu = {};
 let silhouetteSet = new Set();
+let mapFindSet = new Set();
 
 // cca2 -> эмодзи-флаг (fallback, если flags.svg недоступен)
 export function codeToEmoji(cca2) {
@@ -132,6 +136,11 @@ export function hasSilhouette(country) {
   return silhouetteSet.has(country.cca2);
 }
 
+// Карта: есть ли геометрия страны в worldmap.json (по манифесту).
+export function hasMapFind(country) {
+  return mapFindSet.has(country.cca2);
+}
+
 // Плотность населения (жит/км²). lang передаётся явно (как в TOPICS).
 export function getDensityFormatted(country, lang) {
   const d = country.population / country.area;
@@ -205,6 +214,10 @@ export async function fetchCountries() {
   // Манифест силуэтов (массив cca2). Не критичен — при сбое тема «Силуэт» просто пустая.
   const silhouetteArr = await fetch(SILHOUETTES_URL).then((r) => r.json()).catch(() => []);
   silhouetteSet = new Set(Array.isArray(silhouetteArr) ? silhouetteArr : []);
+
+  // Манифест карты (массив cca2). Не критичен — при сбое тема «Найди на карте» пустая.
+  const mapArr = await fetch(WORLDMAP_INDEX_URL).then((r) => r.json()).catch(() => []);
+  mapFindSet = new Set(Array.isArray(mapArr) ? mapArr : []);
 
   if (capRes.ok) {
     try {

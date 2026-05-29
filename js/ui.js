@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260565";
-import { t } from "./i18n.js?v=20260565";
+import { codeToEmoji, officialName } from "./data.js?v=20260566";
+import { t } from "./i18n.js?v=20260566";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -367,6 +367,77 @@ function localAssetImg(dir, cca2, className, onExhausted) {
   return img;
 }
 
+// Данные карты (готовые SVG-пути в экранных координатах) — грузятся лениво один раз
+// при первом вопросе темы «Найди на карте». Проекция уже посчитана build_worldmap.js,
+// поэтому D3/внешние библиотеки в рантайме не нужны.
+let worldmapData = null;
+let mapRenderToken = 0;
+async function loadWorldmapData() {
+  if (worldmapData) return worldmapData;
+  worldmapData = await fetch("data/worldmap.json").then((r) => r.json());
+  return worldmapData;
+}
+
+// Рисует карту мира в flagEl с подсвеченной страной (оранжевой). Микрогосударства
+// (bbox < 8px) дополнительно помечает кружком. Автозум к bbox страны (MIN 80, отступ
+// 50%). Токен защищает от гонки: если вопрос сменился, пока грузилась карта, — выходим.
+async function renderMapFind(country, flagEl) {
+  const NS = "http://www.w3.org/2000/svg";
+  const token = ++mapRenderToken;
+  flagEl.innerHTML = `<div class="map-loading">${t("map.loading")}</div>`;
+  let data;
+  try {
+    data = await loadWorldmapData();
+  } catch {
+    if (token === mapRenderToken) { flagEl.classList.add("silhouette-fallback"); flagEl.textContent = "?"; }
+    return;
+  }
+  if (token !== mapRenderToken) return; // вопрос успел смениться
+
+  const target = (country.cca2 || "").toUpperCase();
+  const svg = document.createElementNS(NS, "svg");
+  svg.classList.add("map-find-svg");
+  let tc = null;
+  for (const c of data.countries) {
+    const isTarget = c.cca2 === target;
+    if (isTarget) tc = c;
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", c.d);
+    p.setAttribute("class", "map-country" + (isTarget ? " map-country--highlight" : ""));
+    svg.appendChild(p);
+  }
+
+  if (tc) {
+    const [x0, y0, x1, y1] = tc.bbox;
+    const bw = x1 - x0, bh = y1 - y0;
+    const [cx, cy] = tc.c;
+    if (bw < 8 || bh < 8) {
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", cx);
+      dot.setAttribute("cy", cy);
+      dot.setAttribute("r", 6);
+      dot.setAttribute("class", "map-country-dot--highlight");
+      svg.appendChild(dot);
+    }
+    const PAD = 0.5, MIN = 80;
+    let zx0 = x0, zy0 = y0;
+    let zw = Math.max(bw, MIN), zh = Math.max(bh, MIN);
+    if (zw === MIN) zx0 = cx - MIN / 2;
+    if (zh === MIN) zy0 = cy - MIN / 2;
+    const px = zw * PAD, py = zh * PAD;
+    svg.setAttribute("viewBox", `${zx0 - px} ${zy0 - py} ${zw + px * 2} ${zh + py * 2}`);
+  } else {
+    svg.setAttribute("viewBox", `0 0 ${data.w} ${data.h}`);
+  }
+
+  flagEl.innerHTML = "";
+  flagEl.classList.add("map-mode");
+  const wrap = document.createElement("div");
+  wrap.className = "map-find-container";
+  wrap.appendChild(svg);
+  flagEl.appendChild(wrap);
+}
+
 export function renderQuestion({ prompt, options, questionNumber, total, questionText }) {
   if (questionText) {
     document.querySelector(".question-text").textContent = questionText;
@@ -374,7 +445,7 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
 
   const flagEl = document.getElementById("flag-big");
   flagEl.innerHTML = "";
-  flagEl.classList.remove("silhouette-fallback");
+  flagEl.classList.remove("silhouette-fallback", "map-mode");
   if (prompt.type === "text") {
     flagEl.classList.add("text-prompt");
     flagEl.textContent = prompt.text;
@@ -395,6 +466,9 @@ export function renderQuestion({ prompt, options, questionNumber, total, questio
     };
     img.src = `data/silhouettes/${cca2}.svg`;
     flagEl.appendChild(img);
+  } else if (prompt.type === "mapFind") {
+    flagEl.classList.remove("text-prompt");
+    renderMapFind(prompt.country, flagEl); // async: грузит карту и рисует в flagEl
   } else {
     flagEl.classList.remove("text-prompt");
     const country = prompt.country;

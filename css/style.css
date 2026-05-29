@@ -420,6 +420,45 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   font-size: 96px;
   color: #94a3b8;
 }
+/* ── Найди на карте (mapFind) ── */
+/* В режиме карты снимаем ограничение ширины .flag-big (260px). */
+.flag-big.map-mode {
+  max-width: 600px;
+}
+.map-find-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1a2744;
+}
+.map-find-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.map-country {
+  fill: #4a5568;
+  stroke: #2d3748;
+  stroke-width: 0.5px;
+  fill-rule: evenodd;
+}
+.map-country--highlight {
+  fill: #f97316;
+  stroke: #ea580c;
+  stroke-width: 1px;
+}
+.map-country-dot--highlight {
+  fill: #f97316;
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+.map-loading {
+  text-align: center;
+  padding: 40px;
+  color: #a0aec0;
+}
 .question-text { font-size: 18px; margin: 0 0 16px; }
 
 .options {

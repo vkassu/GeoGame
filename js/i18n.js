@@ -62,6 +62,7 @@ const STRINGS = {
     "bonus.prize.xp":     "+{n} XP",
     "bonus.prize.chest":  "🧰 +{n} сундук(ов)",
     "alert.no-questions": "Нет вопросов под выбранные настройки. Измените регионы или темы.",
+    "map.loading": "Загружаем карту…",
     "alert.limited": "Доступно только {n} вопросов. Продолжить?",
     "alert.go-home": "Прервать текущую партию и вернуться на главную?",
     "alert.end-early": "Завершить партию досрочно?",
@@ -196,6 +197,7 @@ const STRINGS = {
     "bonus.prize.xp":     "+{n} XP",
     "bonus.prize.chest":  "🧰 +{n} chest(s)",
     "alert.no-questions": "No questions for selected settings. Change regions or topics.",
+    "map.loading": "Loading map…",
     "alert.limited": "Only {n} questions available. Continue?",
     "alert.go-home": "Quit current game and go to main screen?",
     "alert.end-early": "End game early?",
@@ -307,6 +309,7 @@ export const TOPIC_LABELS = {
   coatOfArms:       { ru: "Герб",               en: "Coat of arms" },
   density:          { ru: "Плотность",          en: "Density" },
   religion:         { ru: "Религия",            en: "Religion" },
+  mapFind:          { ru: "Найди на карте",     en: "Find on map" },
   silhouette:       { ru: "Силуэт",             en: "Silhouette" },
 };
 
@@ -323,6 +326,7 @@ export const TOPIC_QUESTIONS = {
   coatOfArms:       { ru: "Что это за страна?",                          en: "What country is this?" },
   density:          { ru: "Какова плотность населения?",                 en: "What is the population density?" },
   religion:         { ru: "Какая религия преобладает?",                  en: "What is the dominant religion?" },
+  mapFind:          { ru: "Какая страна выделена?",                      en: "Which country is highlighted?" },
   silhouette:       { ru: "Что это за страна?",                          en: "What country is this?" },
 };
 
