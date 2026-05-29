@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260563";
+} from "./data.js?v=20260564";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260563";
+} from "./i18n.js?v=20260564";
 import {
   showScreen,
   getPlayAgainButton,
@@ -70,15 +70,15 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260563";
+} from "./ui.js?v=20260564";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260563";
+  from "./levels.js?v=20260564";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260563";
+  from "./achievements.js?v=20260564";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -1635,7 +1635,8 @@ function applyUserData(data) {
   renderGamesPlayed(state.gamesPlayed);
 }
 
-// Полный сброс прогресса («как в первый раз»): XP/рекорд/партии/инвентарь/выбор тем.
+// Полный сброс прогресса («как в первый раз»):
+// XP / рекорд / партии / инвентарь / выбор тем / достижения / дейлик / стрик / задания.
 // Чистит localStorage и, если пользователь залогинен, обнуляет его документ в Firestore.
 function resetProgress() {
   if (!confirm(t("reset.confirm"))) return;
@@ -1657,6 +1658,17 @@ function resetProgress() {
   localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory));
   localStorage.removeItem(STORAGE.achievements);
   localStorage.removeItem(STORAGE.achievementsNew);
+
+  // Дейлик — сделать снова доступным.
+  state.dailyPrize = { lastClaimDate: "" };
+  localStorage.removeItem(STORAGE.dailyPrize);
+  // Стрик — обнулить полностью.
+  state.streak = { count: 0, lastGameDate: "", milestonesClaimedAt: [] };
+  localStorage.removeItem(STORAGE.streak);
+  // Задания — сбросить, чтобы сгенерировались заново при открытии экрана.
+  state.dailyQuests = { date: "", quests: [] };
+  localStorage.removeItem(STORAGE.dailyQuests);
+
   persistTopicDifficulties();
 
   // Облако: перезаписываем документ нулями, иначе при следующем входе оно вернёт прогресс.
