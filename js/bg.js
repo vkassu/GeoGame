@@ -11,10 +11,10 @@
 // Без внешних зависимостей и без сети: картинки локальные, лежат в репозитории.
 
 const BACKGROUNDS = [
-  "img/backgrounds/bg_columbus_v2.png",
-  "img/backgrounds/bg_silkroad.png",
-  "img/backgrounds/bg_antarctica.png",
-  "img/backgrounds/bg_amazon.png",
+  "img/backgrounds/bg_columbus_v2.webp",
+  "img/backgrounds/bg_silkroad.webp",
+  "img/backgrounds/bg_antarctica.webp",
+  "img/backgrounds/bg_amazon.webp",
 ];
 
 const ROTATE_MS = 5 * 60 * 1000; // 5 минут

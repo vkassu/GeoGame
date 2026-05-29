@@ -20,7 +20,7 @@ import {
   hasReligion,
   hasSilhouette,
   hasMapFind,
-} from "./data.js?v=20260568";
+} from "./data.js?v=20260569";
 import {
   getLang,
   setLang,
@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260568";
+} from "./i18n.js?v=20260569";
 import {
   showScreen,
   getPlayAgainButton,
@@ -72,16 +72,16 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260568";
+} from "./ui.js?v=20260569";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260568";
+  from "./levels.js?v=20260569";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260568";
-import { initBackgroundRotation } from "./bg.js?v=20260568";
+  from "./achievements.js?v=20260569";
+import { initBackgroundRotation } from "./bg.js?v=20260569";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
