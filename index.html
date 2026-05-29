@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoGame — викторина по географии</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><radialGradient id='g' cx='50%25' cy='42%25' r='62%25'><stop offset='0%25' stop-color='%23fff7c2'/><stop offset='45%25' stop-color='%23ffd23f'/><stop offset='100%25' stop-color='%23f7971e'/></radialGradient></defs><path fill='url(%23g)' stroke='%23e08600' stroke-width='3' stroke-linejoin='round' d='M50 6 61.8 37.6 95.1 39.5 69 60.4 77.9 92.5 50 73.6 22.1 92.5 31 60.4 4.9 39.5 38.2 37.6Z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=20260558">
+  <link rel="stylesheet" href="css/style.css?v=20260559">
 </head>
 <body>
   <header class="topbar">
@@ -35,6 +35,7 @@
           </div>
         </div>
         <p class="xp-bar-caption" id="menu-xp-caption"></p>
+        <div id="menu-bonus-line" class="menu-bonus-line" style="display:none"></div>
 
         <!-- Инвентарь (только сундуки) -->
         <div class="menu-inventory">
@@ -63,6 +64,11 @@
             <span id="menu-tasks-badge" class="menu-badge" hidden></span>
           </button>
         </div>
+
+        <button type="button" class="menu-btn" id="menu-achievements-btn">
+          <span data-i18n="menu.achievements">Достижения</span>
+          <span id="menu-achievements-badge" class="menu-badge" hidden></span>
+        </button>
 
         <div class="menu-btn-row">
           <button type="button" class="menu-btn menu-btn-half" id="menu-auth-btn"></button>
@@ -247,11 +253,22 @@
       </div>
     </section>
 
+    <!-- Экран «Достижения» -->
+    <section id="achievements-screen" class="screen">
+      <div class="ach-header">
+        <button type="button" class="nav-btn" id="achievements-back-btn" data-i18n="enc.back">← Назад</button>
+        <h2 class="ach-header-title" data-i18n="menu.achievements">Достижения</h2>
+        <span id="achievements-bonus-total" class="ach-bonus-total"></span>
+      </div>
+      <div id="achievements-list" class="ach-list"></div>
+    </section>
+
     <section id="result-screen" class="screen">
       <h2 data-i18n="result.title">Игра окончена</h2>
       <p class="result-text" id="result-text"></p>
       <p class="game-xp"><span data-i18n="result.session-xp">За партию:</span> <span id="res-session-xp">+0 XP</span></p>
       <p class="game-xp" id="res-bonus-row" style="display:none"><span data-i18n="result.bonus-xp">Бонус:</span> <span id="res-bonus-val"></span></p>
+      <p class="game-xp ach-bonus-label" id="res-ach-bonus-row" style="display:none"><span data-i18n="achievements.bonus.result">Бонус достижений</span>: <span id="res-ach-bonus-val"></span></p>
       <p class="game-xp"><span data-i18n="result.total-xp">Итого:</span> <span id="res-total-xp">+0 XP</span></p>
       <p class="games-played"><span data-i18n="result.games">Партий сыграно:</span> <span id="games-played">0</span></p>
 
@@ -316,6 +333,6 @@
     </section>
   </main>
 
-  <script type="module" src="js/main.js?v=20260558"></script>
+  <script type="module" src="js/main.js?v=20260559"></script>
 </body>
 </html>

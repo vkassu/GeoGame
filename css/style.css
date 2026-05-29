@@ -1287,3 +1287,97 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   box-shadow: 0 0 0 2px rgba(229,57,53,.25);
 }
 .menu-badge[hidden] { display: none; }
+
+/* Строка XP-бонуса достижений в профиле меню */
+.menu-bonus-line {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2a9d2a;
+  text-align: center;
+}
+
+/* ---- Экран «Достижения» ---- */
+.ach-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ach-header .nav-btn { flex: 0 0 auto; width: auto; }
+.ach-header-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: left;
+}
+.ach-bonus-total {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2a9d2a;
+  text-align: right;
+}
+.ach-section { margin-bottom: 18px; }
+.ach-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+  text-align: left;
+}
+.ach-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #e8eaed;
+  text-align: left;
+}
+.ach-item:last-child { border-bottom: none; }
+.ach-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.ach-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.ach-done .ach-name { color: #2a9d2a; }
+.ach-stars {
+  flex: 0 0 auto;
+  font-size: 13px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.ach-stars .ach-star-on  { color: #f59e0b; }  /* ★ заполненные — золотые */
+.ach-stars .ach-star-off { color: #cbd2da; }  /* ☆ пустые — серые */
+.ach-bar {
+  height: 8px;
+  background: #e3e8ee;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.ach-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #2c7be5);
+  border-radius: 4px;
+  transition: width .3s;
+}
+.ach-prog {
+  font-size: 12px;
+  color: #888;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.ach-status { font-size: 18px; }
+.ach-bonus-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2a9d2a;
+  margin-top: 2px;
+}

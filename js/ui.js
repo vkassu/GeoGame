@@ -1,8 +1,8 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260558";
-import { t } from "./i18n.js?v=20260558";
+import { codeToEmoji, officialName } from "./data.js?v=20260559";
+import { t } from "./i18n.js?v=20260559";
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -14,7 +14,7 @@ export function showScreen(name) {
   const home = getHomeButton();
   if (home) home.hidden = (
     name === "start" || name === "menu" || name === "encyclopedia" ||
-    name === "tasks" ||
+    name === "tasks" || name === "achievements" ||
     name === "result" || name === "training" || name === "bonus"
   );
 }
@@ -284,9 +284,11 @@ export function hideLevelUpBanner() {
  * @param {Object} p.inventory       — { chests }
  * @param {boolean} p.isLoggedIn
  * @param {string} p.lang            — "ru" или "en"
+ * @param {number} p.bonusPercent    — суммарный XP-бонус достижений (%), 0 = скрыть строку
  */
 export function renderMenuProfile({ avatarUrl, username, level,
-                                    xpProgress, inventory, isLoggedIn, lang }) {
+                                    xpProgress, inventory, isLoggedIn, lang,
+                                    bonusPercent = 0 }) {
   // Аватар / иконка гостя
   const avatar = document.getElementById("menu-avatar");
   const guestIcon = document.getElementById("menu-guest-icon");
@@ -309,6 +311,17 @@ export function renderMenuProfile({ avatarUrl, username, level,
     (percent * 100).toFixed(1) + "%";
   document.getElementById("menu-xp-caption").textContent =
     xpInLevel + " / " + xpNeeded + " XP";
+
+  // Строка XP-бонуса достижений (скрыта при 0%)
+  const bonusLine = document.getElementById("menu-bonus-line");
+  if (bonusLine) {
+    if (bonusPercent > 0) {
+      bonusLine.textContent = "🎯 " + t("achievements.xp-bonus", { n: bonusPercent });
+      bonusLine.style.display = "";
+    } else {
+      bonusLine.style.display = "none";
+    }
+  }
 
   // Инвентарь (только сундуки)
   document.getElementById("menu-inv-chests").textContent = String(inventory.chests);
@@ -515,8 +528,9 @@ export function renderEncCountries(title, items, onPick) {
   }
 }
 
-// Итог сессии: «За партию / Бонус / Итого». bonusText — строка приза или null (если бонуса не было).
-export function renderResultSummary({ correct, total, sessionXP, bonusText, totalXP }) {
+// Итог сессии: «За партию / Бонус / Бонус достижений / Итого».
+// bonusText — строка приза или null. achBonus — суммарный % достижений (0 = скрыть строку).
+export function renderResultSummary({ correct, total, sessionXP, bonusText, totalXP, achBonus = 0 }) {
   document.getElementById("result-text").textContent = t("result.score", { score: correct, total });
   document.getElementById("res-session-xp").textContent = "+" + sessionXP + " XP";
   const bonusRow = document.getElementById("res-bonus-row");
@@ -525,6 +539,15 @@ export function renderResultSummary({ correct, total, sessionXP, bonusText, tota
     document.getElementById("res-bonus-val").textContent = bonusText;
   } else {
     bonusRow.style.display = "none";
+  }
+  const achRow = document.getElementById("res-ach-bonus-row");
+  if (achRow) {
+    if (achBonus > 0) {
+      achRow.style.display = "";
+      document.getElementById("res-ach-bonus-val").textContent = "+" + achBonus + "%";
+    } else {
+      achRow.style.display = "none";
+    }
   }
   document.getElementById("res-total-xp").textContent = "+" + totalXP + " XP";
 }
@@ -789,5 +812,109 @@ export function setDailyCountdownText(str) {
 // Показать/скрыть бейдж-уведомление на кнопке «Задания» в меню.
 export function setTasksBadge(show) {
   const badge = document.getElementById("menu-tasks-badge");
+  if (badge) badge.hidden = !show;
+}
+
+// ---- Экран «Достижения» ----
+
+const ACH_CAT_EMOJI = { region: "🌍", topic: "🧩", volume: "📊", mastery: "🏆" };
+
+/**
+ * Рендерит экран достижений из вью-модели (логика — в main.js).
+ * @param {Object} vm
+ * @param {number} vm.totalBonus  — суммарный XP-бонус %
+ * @param {Array}  vm.categories  — [{ key, title, items: [...] }]
+ */
+export function renderAchievements(vm) {
+  const totalEl = document.getElementById("achievements-bonus-total");
+  if (totalEl) {
+    if (vm.totalBonus > 0) {
+      totalEl.textContent = t("achievements.bonus", { n: vm.totalBonus });
+      totalEl.style.display = "";
+    } else {
+      totalEl.style.display = "none";
+    }
+  }
+
+  const list = document.getElementById("achievements-list");
+  list.innerHTML = "";
+  for (const cat of vm.categories) {
+    const section = document.createElement("div");
+    section.className = "ach-section";
+    const h = document.createElement("h3");
+    h.className = "ach-section-title";
+    h.textContent = (ACH_CAT_EMOJI[cat.key] || "") + " " + cat.title;
+    section.appendChild(h);
+    for (const item of cat.items) section.appendChild(buildAchItem(item));
+    list.appendChild(section);
+  }
+}
+
+function buildAchItem(item) {
+  const row = document.createElement("div");
+  row.className = "ach-item" + (item.done ? " ach-done" : "");
+
+  // Заголовок: название (+ уровень для многоуровневых) + звёзды
+  const head = document.createElement("div");
+  head.className = "ach-item-head";
+  const name = document.createElement("span");
+  name.className = "ach-name";
+  name.textContent = item.isMastery
+    ? item.name
+    : item.name + " — " + t("achievements.level", { n: item.level });
+  head.appendChild(name);
+
+  const stars = document.createElement("span");
+  stars.className = "ach-stars";
+  if (item.level > 0) {
+    const on = document.createElement("span");
+    on.className = "ach-star-on";
+    on.textContent = "★".repeat(item.level);
+    stars.appendChild(on);
+  }
+  if (item.maxLevel - item.level > 0) {
+    const off = document.createElement("span");
+    off.className = "ach-star-off";
+    off.textContent = "☆".repeat(item.maxLevel - item.level);
+    stars.appendChild(off);
+  }
+  head.appendChild(stars);
+  row.appendChild(head);
+
+  if (item.isMastery) {
+    const status = document.createElement("div");
+    status.className = "ach-status";
+    status.textContent = item.done ? "✅" : "🔒";
+    row.appendChild(status);
+  } else {
+    const bar = document.createElement("div");
+    bar.className = "ach-bar";
+    const fill = document.createElement("div");
+    fill.className = "ach-bar-fill";
+    const maxed = item.level >= item.maxLevel;
+    const pct = maxed ? 100
+      : (item.nextThreshold ? Math.min(100, (item.progress / item.nextThreshold) * 100) : 100);
+    fill.style.width = pct.toFixed(0) + "%";
+    bar.appendChild(fill);
+    row.appendChild(bar);
+
+    const prog = document.createElement("div");
+    prog.className = "ach-prog";
+    prog.textContent = maxed ? "MAX" : (item.progress + " / " + item.nextThreshold);
+    row.appendChild(prog);
+  }
+
+  if (item.xpBonusPerLevel > 0) {
+    const b = document.createElement("div");
+    b.className = "ach-bonus-label";
+    b.textContent = t("achievements.xp-bonus", { n: item.bonusPercent });
+    row.appendChild(b);
+  }
+  return row;
+}
+
+// Показать/скрыть бейдж-уведомление на кнопке «Достижения» в меню.
+export function setAchievementsBadge(show) {
+  const badge = document.getElementById("menu-achievements-badge");
   if (badge) badge.hidden = !show;
 }

@@ -18,7 +18,7 @@ import {
   hasDensity,
   religionName,
   hasReligion,
-} from "./data.js?v=20260558";
+} from "./data.js?v=20260559";
 import {
   getLang,
   setLang,
@@ -27,7 +27,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260558";
+} from "./i18n.js?v=20260559";
 import {
   showScreen,
   getPlayAgainButton,
@@ -63,12 +63,17 @@ import {
   renderTasks,
   setDailyCountdownText,
   setTasksBadge,
-} from "./ui.js?v=20260558";
+  renderAchievements,
+  setAchievementsBadge,
+} from "./ui.js?v=20260559";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260558";
+  from "./levels.js?v=20260559";
+import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
+         setAchievementProgress, getAchievementBonus, applyBonus }
+  from "./achievements.js?v=20260559";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -238,6 +243,8 @@ const STORAGE = {
   dailyPrize: "geogame:daily-prize",
   streak: "geogame:streak",
   dailyQuests: "geogame:daily-quests",
+  achievements: "geogame:achievements",
+  achievementsNew: "geogame:achievements-new",
 };
 
 const state = {
@@ -282,6 +289,12 @@ const state = {
   dailyPrize: { lastClaim: 0 },                                  // { lastClaim: ms }
   streak: { count: 0, lastGameDate: "", milestonesClaimedAt: [] }, // date "YYYY-MM-DD"
   dailyQuests: { date: "", quests: [] },                          // { date, quests: [...] }
+  // Достижения: { "category:id": { progress, level } }. Заполняется initAchievements.
+  achievements: {},
+  correctStreak: 0,        // правильных подряд в текущей сессии (для mastery:sniper)
+  speedCount: 0,           // ответов быстрее 5 сек в сессии (для mastery:speed)
+  questionStartTime: 0,    // время показа текущего вопроса (для mastery:speed)
+  bonusXpCredited: 0,      // фактически начисленный XP за бонусную ячейку (с учётом бонуса достижений)
   setup: {
     regions: [...DEFAULT_REGIONS],
     topicDifficulties: { ...DEFAULT_TOPIC_DIFFICULTIES }, // { topicKey: -1..3 }, -1 = выключено
@@ -362,6 +375,13 @@ function loadFromStorage() {
     const dq = JSON.parse(localStorage.getItem(STORAGE.dailyQuests) || "null");
     if (dq && typeof dq === "object" && Array.isArray(dq.quests)) state.dailyQuests = dq;
   } catch (_) {}
+
+  // Достижения (уровень пересчитывается из прогресса внутри initAchievements).
+  try {
+    state.achievements = initAchievements(JSON.parse(localStorage.getItem(STORAGE.achievements) || "null"));
+  } catch (_) {
+    state.achievements = initAchievements(null);
+  }
 }
 
 // ---------- утилиты ----------
@@ -536,7 +556,11 @@ function startGame() {
   state.trainingQueue = [];
   state.trainingCurrent = null;
   state.bonusPrize = null;
+  state.bonusXpCredited = 0;
   state.xpBeforeSession = 0;
+  // Сессионные трекеры достижений (снайпер/молния).
+  state.correctStreak = 0;
+  state.speedCount = 0;
   state.screen = "game";
   // На случай если предыдущий цикл закончился в режиме обучения — вернуть видимость кнопок.
   const actionsEl = document.querySelector(".answer-actions");
@@ -558,6 +582,8 @@ function startTimer() {
       const q = state.questions[state.currentQuestion];
       const correct = TOPICS[q.topicKey].answer(q.country);
       state.hintCharge = 0; // серия правильных прервана
+      state.correctStreak = 0; // снайпер/молния сбрасываются при таймауте
+      state.speedCount = 0;
       // Запоминаем ошибку для будущего экрана «Обучение» (только в обычной партии).
       if (!state.isTraining) {
         state.wrongAnswers.push({
@@ -583,6 +609,7 @@ function clearTimer() {
 function showQuestion(index) {
   hideAnswerResult();
   startTimer();
+  state.questionStartTime = Date.now(); // для достижения mastery:speed
   const q = state.questions[index];
   const topic = TOPICS[q.topicKey];
   const country = q.country;
@@ -634,16 +661,42 @@ function handleAnswer(picked, allButtons, correct) {
       // Задание «5 правильных подряд» (только в обычной партии).
       if (!state.isTraining) updateQuestProgress("streak5", 1);
     }
-    // XP начисляется только в обычной партии. В обучении — нет.
+
+    // --- Достижения: трекинг при правильном ответе (handleAnswer — только обычная партия) ---
+    const q = state.questions[state.currentQuestion];
+    const regionMap = {
+      Europe: "region:europe", Asia: "region:asia", Africa: "region:africa",
+      Americas: "region:americas", Oceania: "region:oceania",
+    };
+    const newLevels = [];
+    const rKey = regionMap[q.country.region];
+    if (rKey) newLevels.push(...advanceAchievement(state.achievements, rKey, 1));
+    newLevels.push(...advanceAchievement(state.achievements, "topic:" + q.topicKey, 1));
+    // Снайпер: 15 правильных подряд в сессии.
+    state.correctStreak++;
+    if (state.correctStreak >= 15) newLevels.push(...advanceAchievement(state.achievements, "mastery:sniper", 1));
+    // Молния: 10 ответов быстрее 5 сек в сессии.
+    const elapsed = (Date.now() - state.questionStartTime) / 1000;
+    if (elapsed < 5) {
+      state.speedCount++;
+      if (state.speedCount >= 10) newLevels.push(...advanceAchievement(state.achievements, "mastery:speed", 1));
+    }
+    persistAchievements();
+    if (newLevels.length) handleNewAchievementLevels(newLevels);
+
+    // XP начисляется только в обычной партии. В обучении — нет. Применяем бонус достижений.
     if (!state.isTraining) {
-      state.xpTotal += XP_PER_CORRECT;
-      state.xpEarnedThisGame += XP_PER_CORRECT;
+      const earned = applyBonus(XP_PER_CORRECT, getAchievementBonus(state.achievements));
+      state.xpTotal += earned;
+      state.xpEarnedThisGame += earned;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
       // Задание «Ответь верно на 15 вопросов» (накапливается за день).
       updateQuestProgress("correct15", 1);
     }
   } else {
     state.hintCharge = 0; // серия прервана
+    state.correctStreak = 0; // снайпер/молния сбрасываются при ошибке
+    state.speedCount = 0;
     if (!state.isTraining) {
       // Запоминаем ошибку для будущего экрана «Обучение» (только в обычной партии).
       const q = state.questions[state.currentQuestion];
@@ -754,6 +807,20 @@ function endGame() {
   // Стрик: обновить счётчик и выдать награды за вехи (меняет xpTotal/инвентарь).
   updateStreak();
 
+  // --- Достижения: объём и мастерство по итогам партии ---
+  const achNewLevels = [];
+  achNewLevels.push(...advanceAchievement(state.achievements, "volume:games", 1));
+  achNewLevels.push(...setAchievementProgress(state.achievements, "volume:xp", state.xpTotal));
+  if (state.wrongAnswers.length === 0 && state.questions.length >= 10)
+    achNewLevels.push(...advanceAchievement(state.achievements, "mastery:perfect", 1));
+  const activeTopicsCount = Object.values(state.setup.topicDifficulties).filter((v) => v >= 0).length;
+  if (activeTopicsCount === Object.keys(TOPICS).length)
+    achNewLevels.push(...advanceAchievement(state.achievements, "mastery:alltopics", 1));
+  if (state.setup.regions.length === Object.keys(REGIONS).length)
+    achNewLevels.push(...advanceAchievement(state.achievements, "mastery:allregions", 1));
+  persistAchievements();
+  if (achNewLevels.length) handleNewAchievementLevels(achNewLevels);
+
   // Сохранение игрового XP/рекорда в облако (бонусный XP сохранится позже в finishBonus).
   // xpTotal/inventory уже включают награды за вехи стрика.
   if (state.user) {
@@ -773,8 +840,17 @@ function endGame() {
 function goToResult() {
   state.screen = "result";
   const sessionXP = state.xpEarnedThisGame;
-  const bonusXP = state.bonusPrize && state.bonusPrize.type === "xp" ? state.bonusPrize.amount : 0;
-  const bonusText = state.bonusPrize ? formatPrize(state.bonusPrize) : null;
+  // Для XP-приза показываем фактически начисленное (с бонусом достижений); для сундука — текст приза.
+  let bonusXP = 0;
+  let bonusText = null;
+  if (state.bonusPrize) {
+    if (state.bonusPrize.type === "xp") {
+      bonusXP = state.bonusXpCredited || state.bonusPrize.amount;
+      bonusText = t("bonus.prize.xp", { n: bonusXP });
+    } else {
+      bonusText = formatPrize(state.bonusPrize);
+    }
+  }
 
   renderResultSummary({
     correct: state.score,
@@ -782,6 +858,7 @@ function goToResult() {
     sessionXP,
     bonusText,
     totalXP: sessionXP + bonusXP,
+    achBonus: getAchievementBonus(state.achievements),
   });
   renderGamesPlayed(state.gamesPlayed);
   renderXpTotal(state.xpTotal);
@@ -953,6 +1030,10 @@ function finishTraining() {
   // Задание «Пройди обучение (не пропускай)» — засчитывается только при реальном
   // завершении обучения (skipTraining сюда не заходит).
   updateQuestProgress("dotraining", 1);
+  // Достижение «Прилежный» — завершить обучение 10 раз.
+  const achNewLevels = advanceAchievement(state.achievements, "mastery:training", 1);
+  persistAchievements();
+  if (achNewLevels.length) handleNewAchievementLevels(achNewLevels);
   refreshMenuScreen();
   goToTraining(); // обратно на training-screen — теперь с активным «Бонус»
 }
@@ -1027,9 +1108,13 @@ function formatPrize(prize) {
 // Игрок нажал «Конец» на бонусе → начисляем приз, возвращаемся в меню.
 function finishBonus() {
   const prize = state.bonusPrize;
+  state.bonusXpCredited = 0;
   if (prize) {
     if (prize.type === "xp") {
-      state.xpTotal += prize.amount;
+      // Бонус достижений применяется и к выигрышу с бонусного экрана.
+      const credited = applyBonus(prize.amount, getAchievementBonus(state.achievements));
+      state.bonusXpCredited = credited;
+      state.xpTotal += credited;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
     } else if (prize.type === "chest") {
       state.inventory.chests += prize.amount;
@@ -1057,8 +1142,10 @@ function refreshMenuScreen() {
     inventory: state.inventory,
     isLoggedIn: !!state.user,
     lang: getLang(),
+    bonusPercent: getAchievementBonus(state.achievements),
   });
   setTasksBadge(hasTasksNotification());
+  setAchievementsBadge(localStorage.getItem(STORAGE.achievementsNew) === "true");
 }
 
 function goToMenu() {
@@ -1093,6 +1180,18 @@ function persistStreak()     { localStorage.setItem(STORAGE.streak, JSON.stringi
 function persistDailyQuests(){ localStorage.setItem(STORAGE.dailyQuests, JSON.stringify(state.dailyQuests)); }
 function persistInventory()  { localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory)); }
 function persistXp()         { localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal)); }
+function persistAchievements() { localStorage.setItem(STORAGE.achievements, JSON.stringify(state.achievements)); }
+
+// Начислить награды за новые уровни достижений (сундуки), сохранить и зажечь бейдж.
+function handleNewAchievementLevels(newLevels) {
+  for (const { reward } of newLevels) {
+    if (reward?.chests) state.inventory.chests += reward.chests;
+  }
+  persistAchievements();
+  persistInventory();
+  localStorage.setItem(STORAGE.achievementsNew, "true");
+  setAchievementsBadge(true);
+}
 
 // --- Дейлик ---
 function isDailyPrizeAvailable() {
@@ -1107,8 +1206,7 @@ function formatCountdown(ms) {
 }
 function claimDailyPrize() {
   if (!isDailyPrizeAvailable()) return;
-  state.xpTotal += DAILY_PRIZE_XP;
-  state.xpEarnedThisGame += 0;
+  state.xpTotal += applyBonus(DAILY_PRIZE_XP, getAchievementBonus(state.achievements));
   state.inventory.chests += DAILY_PRIZE_CHESTS;
   state.dailyPrize.lastClaim = Date.now();
   persistXp();
@@ -1187,7 +1285,7 @@ function claimQuest(id) {
   const q = state.dailyQuests.quests.find((x) => x.id === id);
   if (!q || !q.completed || q.claimed) return;
   q.claimed = true;
-  state.xpTotal += q.reward;
+  state.xpTotal += applyBonus(q.reward, getAchievementBonus(state.achievements));
   persistXp();
   persistDailyQuests();
   if (state.user) {
@@ -1272,6 +1370,47 @@ function goToTasks() {
   startTasksTimer();
 }
 
+// ---------- Достижения ----------
+
+// Вью-модель экрана достижений (UI-слой только рисует).
+function buildAchievementsVM() {
+  const lang = getLang();
+  const order = ["region", "topic", "volume", "mastery"];
+  const categories = order.map((cat) => ({
+    key: cat,
+    title: t("achievements.cat." + cat),
+    items: Object.keys(ACHIEVEMENT_DEFS)
+      .filter((k) => ACHIEVEMENT_DEFS[k].category === cat)
+      .map((k) => {
+        const def = ACHIEVEMENT_DEFS[k];
+        const a = state.achievements[k] || { progress: 0, level: 0 };
+        const isMastery = cat === "mastery";
+        const nextThreshold = a.level < def.maxLevel ? def.thresholds[a.level] : null;
+        return {
+          key: k,
+          name: def.name[lang],
+          level: a.level,
+          maxLevel: def.maxLevel,
+          progress: a.progress,
+          nextThreshold,
+          isMastery,
+          done: a.level >= def.maxLevel,
+          xpBonusPerLevel: def.xpBonusPerLevel,
+          bonusPercent: def.xpBonusPerLevel * a.level,
+        };
+      }),
+  }));
+  return { totalBonus: getAchievementBonus(state.achievements), lang, categories };
+}
+
+function goToAchievements() {
+  localStorage.removeItem(STORAGE.achievementsNew);
+  setAchievementsBadge(false);
+  state.screen = "achievements";
+  renderAchievements(buildAchievementsVM());
+  showScreen(state.screen);
+}
+
 // ---------- Энциклопедия (3 вида: регионы / страны / карточка) ----------
 
 let encView = "regions";      // 'regions' | 'countries' | 'detail'
@@ -1347,6 +1486,7 @@ function switchLang() {
   refreshMenuScreen();
   if (state.screen === "encyclopedia") renderEncyclopedia();
   if (state.screen === "tasks") renderTasksScreen();
+  if (state.screen === "achievements") renderAchievements(buildAchievementsVM());
   if (state.user) {
     saveUserData(state.user.uid, { lang: next }).catch(console.error);
   }
@@ -1384,11 +1524,17 @@ function resetProgress() {
   state.xpEarnedThisGame = 0;
   state.inventory = { ...DEFAULT_INVENTORY };
   state.setup.topicDifficulties = { ...DEFAULT_TOPIC_DIFFICULTIES };
+  // Достижения — обнулить.
+  state.achievements = initAchievements(null);
+  state.correctStreak = 0;
+  state.speedCount = 0;
 
   localStorage.setItem(STORAGE.xpTotal, "0");
   localStorage.setItem(STORAGE.bestXpPerGame, "0");
   localStorage.setItem(STORAGE.gamesPlayed, "0");
   localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory));
+  localStorage.removeItem(STORAGE.achievements);
+  localStorage.removeItem(STORAGE.achievementsNew);
   persistTopicDifficulties();
 
   // Облако: перезаписываем документ нулями, иначе при следующем входе оно вернёт прогресс.
@@ -1461,6 +1607,8 @@ async function init() {
   document.getElementById("menu-encyclopedia-btn").addEventListener("click", goToEncyclopedia);
   document.getElementById("menu-quests-btn").addEventListener("click", goToTasks);
   document.getElementById("tasks-back")?.addEventListener("click", () => { clearTasksTimer(); goToMenu(); });
+  document.getElementById("menu-achievements-btn")?.addEventListener("click", goToAchievements);
+  document.getElementById("achievements-back-btn")?.addEventListener("click", goToMenu);
   document.getElementById("menu-memory-btn")?.addEventListener("click", () => console.log("Memory game: coming soon"));
   document.getElementById("menu-auth-btn").addEventListener("click", () => {
     if (state.user) signOutUser();

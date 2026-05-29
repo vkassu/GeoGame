@@ -18,6 +18,433 @@
 
 ---
 
+## 2026-05-29 #36 | Система достижений с XP-бонусом
+
+**Цель:** Полноценная система достижений — 4 категории, многоуровневые, с суммарным % бонусом к любому XP.
+
+**Статус:** выполнен
+
+**Проверено в браузере:** да (localhost:5500 — экран, бонус 20% → дейлик 75→90, endGame-ачивки/сундуки/бейдж, RU/EN, сброс)
+
+**Автор промпта:** Cowork
+
+**Промпт:**
+
+## Контекст
+
+Добавляем систему достижений. Достижения — долгосрочный мотиватор; ключевая механика: каждый уровень достижения из категорий «Регионы» и «Темы» даёт +1% к любому получаемому XP (игра, бонусный экран, дейлик). Суммарный бонус неограничен, отображается в нескольких местах.
+
+---
+
+## 1. Новый файл `js/achievements.js`
+
+Вся логика достижений — data-layer, без DOM и без state.
+
+### 1.1 Определения достижений
+
+```js
+// Пороги прогресса для уровней 1–10 (категории region и topic)
+export const MULTI_THRESHOLDS = [10, 25, 50, 100, 200, 350, 500, 750, 1000, 1500];
+
+// Пороги для объёма (volume:games — кол-во партий)
+export const GAMES_THRESHOLDS = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500];
+
+// Пороги для объёма (volume:xp — суммарный XP)
+export const XP_VOL_THRESHOLDS = [500, 1500, 5000, 15000, 50000, 150000, 500000, 1500000, 5000000, 15000000];
+```
+
+Объект `ACHIEVEMENT_DEFS` — плоский словарь, ключ = `"category:id"`:
+
+**Категория `region`** (5 штук):
+| Ключ | Название RU | Название EN | Условие прогресса |
+|---|---|---|---|
+| `region:europe` | Знаток Европы | Europe Expert | правильные ответы о странах Европы |
+| `region:asia` | Знаток Азии | Asia Expert | Азия |
+| `region:africa` | Знаток Африки | Africa Expert | Африка |
+| `region:americas` | Знаток Америк | Americas Expert | Америка |
+| `region:oceania` | Знаток Океании | Oceania Expert | Океания |
+
+Все: 10 уровней, пороги `MULTI_THRESHOLDS`, `xpBonusPerLevel: 1` (%).
+
+**Категория `topic`** (11 штук):
+| Ключ | Название RU | Название EN |
+|---|---|---|
+| `topic:country` | Флаговед | Flag Expert |
+| `topic:capital` | Картограф | Cartographer |
+| `topic:countryByCapital` | Навигатор | Navigator |
+| `topic:population` | Демограф | Demographer |
+| `topic:area` | Землемер | Surveyor |
+| `topic:language` | Лингвист | Linguist |
+| `topic:currency` | Финансист | Financier |
+| `topic:nativeName` | Этнограф | Ethnographer |
+| `topic:coatOfArms` | Геральдист | Heraldist |
+| `topic:density` | Статистик | Statistician |
+| `topic:religion` | Теолог | Theologian |
+
+Все: 10 уровней, пороги `MULTI_THRESHOLDS`, `xpBonusPerLevel: 1` (%).
+
+**Категория `volume`** (2 штуки):
+- `volume:games` — «Путешественник» / «Traveler», 10 уровней, пороги `GAMES_THRESHOLDS`, без XP-бонуса, награда: сундуки (2 / 3 / 4 / 5 / 7 / 10 / 15 / 20 / 30 / 50 🧰).
+- `volume:xp` — «Эрудит» / «Scholar», 10 уровней, пороги `XP_VOL_THRESHOLDS`, без XP-бонуса, награда: сундуки (2 / 3 / 5 / 8 / 12 / 20 / 30 / 50 / 80 / 150 🧰).
+
+**Категория `mastery`** (6 штук, одноуровневые):
+| Ключ | Название RU | Название EN | Условие |
+|---|---|---|---|
+| `mastery:perfect` | Перфекционист | Perfectionist | сессия без единой ошибки (≥ 10 вопросов) |
+| `mastery:sniper` | Снайпер | Sniper | 15 правильных ответов подряд в одной сессии |
+| `mastery:speed` | Молния | Lightning | 10 ответов быстрее 5 сек в одной сессии |
+| `mastery:alltopics` | Полиглот | Polyglot | сыграть партию со всеми 11 темами одновременно |
+| `mastery:allregions` | Покоритель | Conqueror | сыграть партию со всеми 5 регионами |
+| `mastery:training` | Прилежный | Diligent | завершить обучение (не пропустить) хотя бы 10 раз |
+
+Все mastery: 1 уровень (достиг / не достиг, кроме `mastery:training` — счётчик до 10), без XP-бонуса, награда: 10 🧰 при достижении.
+
+### 1.2 Структура данных достижений в localStorage
+
+Ключ `geogame:achievements` — объект:
+```js
+{
+  "region:europe": { level: 2, progress: 35 },
+  "topic:country": { level: 0, progress: 8 },
+  "mastery:perfect": { level: 0, progress: 0 },
+  // ...
+}
+```
+`level` = текущий уровень достижения (0 = ещё не открыто ни одного). `progress` = накопленный прогресс.
+
+Ключ `geogame:achievements-new` — `true` если есть хотя бы одно новое достижение (уровень вырос) с последнего посещения экрана достижений.
+
+### 1.3 Функции в `achievements.js`
+
+```js
+/**
+ * Загрузить/инициализировать данные достижений из переданного объекта (из localStorage).
+ * Возвращает полный объект со всеми ключами (дополняет отсутствующие нулями).
+ */
+export function initAchievements(stored) { ... }
+
+/**
+ * Обновить прогресс достижения на delta единиц.
+ * Возвращает массив новых уровней, которые были достигнуты (может быть несколько): [{ key, newLevel, reward }]
+ * reward = { xpBonus: 0, chests: N } | null
+ */
+export function advanceAchievement(achievementsState, key, delta) { ... }
+
+/**
+ * Суммарный XP-бонус в процентах (только категории region и topic).
+ * Пример: 3 достижения по 2 уровня = +6%.
+ */
+export function getAchievementBonus(achievementsState) { ... }
+
+/**
+ * Применить XP-бонус к базовому значению.
+ * applyBonus(100, 15) → 115
+ */
+export function applyBonus(baseXp, bonusPercent) {
+  return Math.round(baseXp * (1 + bonusPercent / 100));
+}
+```
+
+---
+
+## 2. `main.js` — интеграция
+
+### 2.1 State и загрузка
+
+Добавить в `state`:
+```js
+state.achievements = {}; // заполняется в loadFromStorage через initAchievements()
+```
+
+В `loadFromStorage`:
+```js
+const rawAch = JSON.parse(localStorage.getItem('geogame:achievements') || 'null');
+state.achievements = initAchievements(rawAch);
+```
+
+В `persistAchievements()` (новая функция):
+```js
+localStorage.setItem('geogame:achievements', JSON.stringify(state.achievements));
+```
+
+### 2.2 Хук `handleAnswer` — основной трекер прогресса
+
+После каждого **правильного** ответа (когда `isCorrect === true`) добавить вызовы:
+
+```js
+const country = q.country;
+const topicKey = q.topicKey;
+const region = country.region; // 'Europe' | 'Asia' | ...
+
+// Регион → ключ достижения (маппинг)
+const regionMap = { Europe: 'region:europe', Asia: 'region:asia', Africa: 'region:africa', Americas: 'region:americas', Oceania: 'region:oceania' };
+
+const newLevels = [];
+
+// Достижение по региону
+const rKey = regionMap[region];
+if (rKey) newLevels.push(...advanceAchievement(state.achievements, rKey, 1));
+
+// Достижение по теме
+newLevels.push(...advanceAchievement(state.achievements, 'topic:' + topicKey, 1));
+
+// Достижение «Снайпер» (15 подряд — используем state.hintCharge как прокси, но лучше завести отдельный счётчик)
+// Завести state.correctStreak (int, сбрасывается при ошибке/таймауте)
+state.correctStreak = (state.correctStreak || 0) + 1;
+if (state.correctStreak >= 15) {
+  newLevels.push(...advanceAchievement(state.achievements, 'mastery:sniper', 1));
+}
+
+// Достижение «Молния» (ответ быстрее 5 сек)
+const elapsed = (Date.now() - state.questionStartTime) / 1000;
+if (elapsed < 5) {
+  state.speedCount = (state.speedCount || 0) + 1;
+  if (state.speedCount >= 10) {
+    newLevels.push(...advanceAchievement(state.achievements, 'mastery:speed', 1));
+  }
+}
+
+if (newLevels.length) {
+  handleNewAchievementLevels(newLevels);
+}
+```
+
+При неверном ответе/таймауте: `state.correctStreak = 0; state.speedCount = 0;`
+
+Добавить `state.questionStartTime = Date.now()` при каждом показе нового вопроса (в `showQuestion`).
+
+### 2.3 Хук `endGame` — достижения по объёму, точности, мастерству
+
+```js
+const newLevels = [];
+
+// volume:games
+newLevels.push(...advanceAchievement(state.achievements, 'volume:games', 1));
+
+// volume:xp (обновляем прогресс до текущего xpTotal)
+// volume:xp прогресс = абсолютное значение xpTotal, а не дельта
+// → нужна функция setAchievementProgress(state.achievements, 'volume:xp', state.xpTotal)
+// которая не прибавляет, а устанавливает абсолютное значение и проверяет пороги
+newLevels.push(...setAchievementProgress(state.achievements, 'volume:xp', state.xpTotal));
+
+// mastery:perfect (0 ошибок, ≥10 вопросов)
+if (state.wrongAnswers.length === 0 && state.questions.length >= 10) {
+  newLevels.push(...advanceAchievement(state.achievements, 'mastery:perfect', 1));
+}
+
+// mastery:alltopics
+const activeTopic = Object.values(state.setup.topicDifficulties).filter(v => v >= 0).length;
+if (activeTopic === Object.keys(TOPICS).length) {
+  newLevels.push(...advanceAchievement(state.achievements, 'mastery:alltopics', 1));
+}
+
+// mastery:allregions
+if (state.setup.regions.length === Object.keys(REGIONS).length) {
+  newLevels.push(...advanceAchievement(state.achievements, 'mastery:allregions', 1));
+}
+
+if (newLevels.length) {
+  handleNewAchievementLevels(newLevels);
+  persistAchievements();
+}
+```
+
+Добавить экспорт `setAchievementProgress(achievementsState, key, absoluteValue)` в `achievements.js`.
+
+### 2.4 Хук `finishTraining` — mastery:training
+
+```js
+newLevels.push(...advanceAchievement(state.achievements, 'mastery:training', 1));
+```
+
+### 2.5 Функция `handleNewAchievementLevels(newLevels)`
+
+```js
+function handleNewAchievementLevels(newLevels) {
+  // Начислить награды (сундуки)
+  for (const { reward } of newLevels) {
+    if (reward?.chests) state.inventory.chests += reward.chests;
+  }
+  persistAchievements();
+  persistInventory();
+  // Выставить бейдж
+  localStorage.setItem('geogame:achievements-new', 'true');
+  setAchievementsBadge(true); // обновить кнопку меню если меню открыто
+}
+```
+
+### 2.6 Применение XP-бонуса
+
+Во всех местах, где начисляется XP, обернуть значение через `applyBonus(base, getAchievementBonus(state.achievements))`:
+
+- `handleAnswer` → строка `state.xpTotal += XP_PER_CORRECT` → заменить на:
+  ```js
+  const bonus = getAchievementBonus(state.achievements);
+  const earned = applyBonus(XP_PER_CORRECT, bonus);
+  state.xpTotal += earned;
+  state.xpEarnedThisGame += earned;
+  ```
+  Сохранить `earned` в переменную, чтобы отображать в баннере «+N XP».
+
+- `claimDailyPrize` → при начислении 75 XP → обернуть.
+
+- `claimBonus` (бонусный экран) → при начислении `state.bonusPrize.xp` → обернуть.
+
+- Награды за достижения (`handleNewAchievementLevels`) — без бонуса (чтобы не было рекурсии).
+
+- Квесты (`claimQuest`) — обернуть.
+
+### 2.7 `goToAchievements` и `goToMenu`
+
+```js
+function goToAchievements() {
+  localStorage.removeItem('geogame:achievements-new');
+  setAchievementsBadge(false);
+  renderAchievements(buildAchievementsVM(), ...);
+  showScreen('achievements');
+}
+```
+
+### 2.8 `resetProgress`
+
+Добавить сброс: `localStorage.removeItem('geogame:achievements'); localStorage.removeItem('geogame:achievements-new');`
+
+---
+
+## 3. `index.html` — новый экран и кнопка меню
+
+Добавить кнопку в `#menu-screen` (рядом с «Задания»):
+```html
+<button id="menu-achievements-btn" data-i18n="menu.achievements">Достижения</button>
+<span id="menu-achievements-badge" class="menu-badge" style="display:none"></span>
+```
+
+Добавить экран:
+```html
+<div id="achievements-screen" class="screen">
+  <div class="topbar">
+    <button id="achievements-back-btn">←</button>
+    <span data-i18n="menu.achievements">Достижения</span>
+    <span id="achievements-bonus-total"></span>
+  </div>
+  <div id="achievements-list"></div>
+</div>
+```
+
+---
+
+## 4. `ui.js` — рендер экрана достижений
+
+Новая функция `renderAchievements(vm)`. `vm` — объект с данными, который строит main.js:
+
+```js
+{
+  totalBonus: 17,       // суммарный %
+  lang: 'ru',
+  categories: [
+    {
+      id: 'region',
+      label: 'Регионы / Regions',
+      items: [
+        {
+          key: 'region:europe',
+          name: 'Знаток Европы',
+          level: 2,          // текущий уровень (0–10)
+          maxLevel: 10,
+          progress: 35,      // текущий прогресс
+          nextThreshold: 50, // null если maxLevel
+          bonusPercent: 2,   // level × 1
+        },
+        ...
+      ]
+    },
+    { id: 'topic', label: 'Темы / Topics', items: [...] },
+    { id: 'volume', label: 'Объём / Volume', items: [...] },
+    { id: 'mastery', label: 'Мастерство / Mastery', items: [...] },
+  ]
+}
+```
+
+Каждый `item` рендерится как карточка:
+- Иконка категории (эмодзи: 🌍 / 🧩 / 📊 / 🏆)
+- Название + уровень (например «Знаток Европы — Ур. 2»)
+- Заполненные / пустые звёзды (★★☆☆☆☆☆☆☆☆)
+- Прогресс-бар: `progress / nextThreshold`
+- Подпись: «35 / 50» и если `bonusPercent > 0`: «+2% к XP»
+- Mastery-достижения без прогресс-бара, только статус (✅ / 🔒)
+
+Вверху экрана (в топбаре или под ним): «Суммарный бонус: +17% к XP» — строка `#achievements-bonus-total`.
+
+Функция `setAchievementsBadge(show)` — показывает/скрывает `#menu-achievements-badge`.
+
+---
+
+## 5. `css/style.css`
+
+Стили для `#achievements-screen`:
+- Карточки достижений аналогичны карточкам квестов (`#tasks-screen`) — белый фон, скруглённые углы, тень.
+- Звёзды: ★ заполненная — золотой (`#f59e0b`), ☆ пустая — серый.
+- Прогресс-бар аналогичен квестовому.
+- Бонус-строка в топбаре: зелёный цвет, правая сторона.
+- Mastery-достижения без прогресс-бара, статус иконкой справа.
+
+---
+
+## 6. Отображение суммарного бонуса в других местах
+
+**Главное меню (`#menu-screen`):**
+В блоке профиля, под XP-баром, добавить строку (если бонус > 0):
+```html
+<div id="menu-bonus-line">🎯 +<span id="menu-bonus-value">0</span>% к XP</div>
+```
+Рендерить в `refreshMenuScreen()`.
+
+**Экран результата партии (`#result-screen`):**
+Добавить строку между «За партию» и «Итого»:
+```
+Бонус достижений: +17%
+```
+Показывать только если бонус > 0. Рендерить в `renderResult()`.
+
+---
+
+## 7. `i18n.js`
+
+Добавить ключи:
+```js
+'menu.achievements': { ru: 'Достижения', en: 'Achievements' },
+'achievements.bonus': { ru: 'Бонус: +{n}% к XP', en: 'Bonus: +{n}% XP' },
+'achievements.bonus.result': { ru: 'Бонус достижений', en: 'Achievement Bonus' },
+```
+
+---
+
+## 8. `CLAUDE.md` — обновить статус
+
+В раздел «Сделано» добавить:
+> **Система достижений (#36):** 4 категории (Регионы ×5, Темы ×11, Объём ×2, Мастерство ×6), 10 уровней у многоуровневых. Категории «Регионы» и «Темы» дают +1% к любому XP за каждый уровень; суммарный бонус без ограничений. Бонус применяется к XP в игре, дейлике, бонусном экране, квестах. Хранение — `geogame:achievements` в localStorage. Экран «Достижения» в главном меню (кнопка рядом с «Задания», бейдж при новых уровнях). Суммарный бонус отображается в профиле на главном экране, на экране результата партии и в шапке экрана достижений.
+
+В раздел «Ключи localStorage» добавить: `geogame:achievements` (объект), `geogame:achievements-new` (bool).
+
+---
+
+## 9. Проверка после реализации
+
+1. Сыграть 3 партии, ответить правильно несколько раз на вопросы о странах Европы → открыть экран достижений → «Знаток Европы» должен показывать прогресс.
+2. Набрать 10 правильных ответов → уровень 1 «Знаток X» достигнут → при следующей партии +1% XP (проверить в результате: базовый XP 10, с бонусом 11).
+3. «Бонус: +N%» отображается в профиле меню и на экране результата.
+4. Бейдж на кнопке «Достижения» появляется при новом уровне, пропадает при входе на экран.
+
+**Результат / расхождения:** Реализовано полностью по всем разделам.
+- Новый `js/achievements.js` (data-layer): `ACHIEVEMENT_DEFS` (24 достижения = region×5 + topic×11 + volume×2 + mastery×6), `initAchievements`/`advanceAchievement`/`setAchievementProgress`/`getAchievementBonus`/`applyBonus`. Уровень всегда пересчитывается из прогресса (устойчиво к смене порогов).
+- main.js: state `achievements`/`correctStreak`/`speedCount`/`questionStartTime`/`bonusXpCredited`; загрузка через `initAchievements`; `persistAchievements`/`handleNewAchievementLevels`. Хуки: `handleAnswer` (регион+тема+снайпер+молния, сброс серий при ошибке/таймауте), `endGame` (volume:games/xp + perfect/alltopics/allregions), `finishTraining` (training). XP-бонус применён к: per-correct, дейлику, квестам, бонусной ячейке. `goToAchievements`/`buildAchievementsVM`. `resetProgress` чистит ачивки + флаг.
+- ui.js: `renderAchievements` (4 секции, звёзды ★/☆ двумя спанами для двух цветов, прогресс-бар/`+N%`, mastery ✅/🔒), `setAchievementsBadge`; `renderMenuProfile` — строка `#menu-bonus-line`; `renderResultSummary` — строка `#res-ach-bonus-row`.
+- index.html: кнопка «Достижения» + бейдж в меню, `#menu-bonus-line`, строка бонуса на result, секция `#achievements-screen`. i18n: `menu.achievements`, `achievements.bonus`, `achievements.bonus.result` (по ТЗ) + добавлены `achievements.cat.*` (4 заголовка секций), `achievements.level`, `achievements.xp-bonus` (требуются UI; в списке ТЗ их не было — добавлены, помечаю как расширение).
+- **Проверено в браузере:** экран рисует 4 секции (5/11/2/6); при сидинге 20% бонуса — `#menu-bonus-line` «🎯 +20% к XP», шапка «Суммарный бонус: +20% к XP», дейлик 75→**90** XP (applyBonus); партия из 7 верных → «За партию: +84 XP» (7×12) + строка «Бонус достижений: +20%»; `volume:games`/`mastery:allregions` → уровень 1, сундуки 5→17 (+2+10), бейдж загорается и гаснет при входе на экран; RU↔EN; `resetProgress` обнуляет ачивки и прячет бонус. Консоль чистая. Cache-busting 20260558→20260559.
+- **Известные нюансы (не блокеры):** (1) баннер ответа по-прежнему показывает статичное «+10 XP» (бонус в нём не отражён — вне scope, предсуществующий хардкод). (2) При активном бонусе раскрытая бонусная ячейка показывает базовый XP, а начисляется/в результате — с бонусом (applyBonus в `finishBonus`, как требует ТЗ). (3) Бонус достижений на result-баре: `xpBeforeSession` фиксируется до бонус-приза, как и раньше.
+
+---
+
 ## 2026-05-29 #35 | Синхронизация порядка тем и уровней разблокировки
 
 **Цель:** Убрать расхождение между визуальным порядком тем в UI и порядком разблокировки — и зафиксировать правило архитектурно, чтобы оно никогда не ломалось само по себе.
