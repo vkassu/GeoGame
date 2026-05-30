@@ -80,17 +80,20 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 
 #game { max-width: 640px; margin: 16px auto; }
 
+/* Карточка-экран: тёплый пергамент с медной обводкой (тема «Эпоха
+   Великих открытий», 2026-05-30). Раньше — стерильно-белая #fff. */
 .screen {
   display: none;
-  background: #fff;
+  background: #fdf3dc;
   color: #1a1a1a;
   padding: 28px 32px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  border: 1.5px solid #c4933a;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   text-align: center;
 }
 .screen.active { display: block; }
-.screen h2 { font-size: 22px; margin: 0 0 12px; }
+.screen h2 { font-size: 22px; margin: 0 0 12px; color: #3d2008; }
 .games-played {
   margin: 0 0 20px;
   font-size: 14px;
@@ -454,33 +457,40 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   gap: 8px;
   margin-top: 8px;
 }
+/* Кнопки ответов — пергамент с медной обводкой (тема «Эпоха Великих
+   открытий», 2026-05-30). Раньше — синий глянцевый градиент #4fc3f7→#0288d1.
+   filter:brightness был хорош для градиента; для плоской заливки переходим
+   на смену background/border-color (явные значения в hover/correct/wrong). */
 .option-btn {
   min-height: 80px;
   padding: 10px 16px;
-  background: linear-gradient(to bottom, #4fc3f7, #0288d1);
-  border: 2px solid #b0bec5;
-  border-radius: 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
-  color: #fff;
-  font-weight: bold;
+  background: #f9edd5;
+  border: 1.5px solid #b5832a;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(60,30,0,0.18);
+  color: #3d2008;
+  font-weight: 600;
   font-size: 18px;
   white-space: normal;
   cursor: pointer;
   font-family: inherit;
-  transition: filter .15s, transform .1s;
+  transition: background .15s, border-color .15s, transform .1s;
 }
-.option-btn:hover:not(:disabled) { filter: brightness(1.15); }
-.option-btn:active:not(:disabled) { filter: brightness(0.9); transform: scale(0.98); }
+.option-btn:hover:not(:disabled) {
+  background: #f0ddb8;
+  border-color: #8b5e1a;
+}
+.option-btn:active:not(:disabled) { transform: scale(0.98); }
 .option-btn:disabled { cursor: default; }
 .option-btn.correct {
-  background: #d6f5d6;
-  border-color: #28a745;
-  color: #1c5b27;
+  background: #d4edcc;
+  border-color: #2d7a3a;
+  color: #1a4d22;
 }
 .option-btn.wrong {
-  background: #f8d7da;
-  border-color: #c0392b;
-  color: #6b1f17;
+  background: #f8d7d7;
+  border-color: #a03030;
+  color: #6b1a1a;
 }
 
 .answer-result {
