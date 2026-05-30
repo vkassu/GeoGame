@@ -37,6 +37,9 @@
 
 ## Закрытые
 
+### ✅ 2026-05-30 — Достижения не синхронизировались между устройствами
+В Firestore раньше писалось только `xpTotal/bestXpPerGame/gamesPlayed/lang`, поэтому десктоп показывал достижения, а iPhone под тем же аккаунтом — нет. В #47 в `loadUserData`/`saveUserData` (firebase.js) добавлены поля `achievements / inventory / dailyPrize / streak / dailyQuests`; `applyUserData` (main.js) их раскатывает в state и localStorage с defensive-нормализацией; `persistAchievements()` пишет облако на каждое продвижение (Firestore SDK сам коалесцирует записи). `endGame`/`claimDailyPrize`/`claimQuest` тоже синкаются. Live-цепочка десктоп → iPhone — проверка на gh-pages. См. PROMPTS_LOG #47.
+
 ### ✅ 2026-05-26 — `.meta` (таймер+подсказка) висела в обучении
 Класс `.training-mode` на `#game-screen` + `#game-screen.training-mode .meta{display:none}`. Ставится в `startTraining`, снимается в finish/skip/goToTraining. PROMPTS_LOG #23 (А1).
 
