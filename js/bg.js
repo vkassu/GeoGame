@@ -15,6 +15,12 @@ const BACKGROUNDS = [
   "img/backgrounds/bg_silkroad.webp",
   "img/backgrounds/bg_antarctica.webp",
   "img/backgrounds/bg_amazon.webp",
+  "img/backgrounds/bg_vikings.webp",
+  "img/backgrounds/bg_cartographers.webp",
+  "img/backgrounds/bg_marco_polo.webp",
+  "img/backgrounds/bg_mughal.webp",
+  "img/backgrounds/bg_astronomers.webp",
+  "img/backgrounds/bg_polynesian.webp",
 ];
 
 const ROTATE_MS = 5 * 60 * 1000; // 5 минут
