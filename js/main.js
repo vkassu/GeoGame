@@ -78,14 +78,22 @@ import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260539";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260572";
+  from "./levels.js?v=20260574";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
   from "./achievements.js?v=20260572";
 import { initBackgroundRotation } from "./bg.js?v=20260572";
 
 const QUESTION_TIME_SEC = 30;
-const XP_PER_CORRECT = 10;
+
+// XP за правильный ответ зависит от сложности темы (difficultyIndex 0..3).
+// 0=4 варианта → 10 XP; 1=6 → 15; 2=8 → 25; 3=10 → 40. Чем больше вариантов,
+// тем больше окно ошибки → больше награда. Бонус достижений применяется поверх
+// (applyBonus) — это уже в handleAnswer.
+const XP_BY_DIFFICULTY = [10, 15, 25, 40];
+function getXPForAnswer(difficultyIndex) {
+  return XP_BY_DIFFICULTY[difficultyIndex ?? 0] ?? 10;
+}
 
 // Шкала сложностей темы: index 0..3 → число вариантов ответа. Едина для всех тем.
 const DIFFICULTIES = [
@@ -755,8 +763,11 @@ function handleAnswer(picked, allButtons, correct) {
     if (newLevels.length) handleNewAchievementLevels(newLevels);
 
     // XP начисляется только в обычной партии. В обучении — нет. Применяем бонус достижений.
+    // q уже взят выше (state.questions[state.currentQuestion]) — переиспользуем
+    // вместо повторного обращения по индексу.
     if (!state.isTraining) {
-      const earned = applyBonus(XP_PER_CORRECT, getAchievementBonus(state.achievements));
+      const earned = applyBonus(getXPForAnswer(q.difficultyIndex),
+                                getAchievementBonus(state.achievements));
       state.xpTotal += earned;
       state.xpEarnedThisGame += earned;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
