@@ -40,24 +40,25 @@ addMulti("region:africa",   "region", "Знаток Африки",  "Africa Expe
 addMulti("region:americas", "region", "Знаток Америк",  "Americas Expert");
 addMulti("region:oceania",  "region", "Знаток Океании", "Oceania Expert");
 
-// --- Категория topic (13). Порядок отображения на экране достижений зафиксирован
-// исторически (#46) и НЕ переставляется автоматически вслед за изменениями порядка
-// ключей в TOPICS (см. перестановку 2026-05-30: mapFind/country/silhouette/...).
-// Если захочется синхронизировать с актуальным UI-порядком тем — переставить
-// блоки addMulti ниже; ключи и значения прогресса при этом не страдают. ---
+// --- Категория topic (13). Порядок строк ниже синхронизирован с порядком ключей
+// в TOPICS (js/main.js) — экран «Достижения» показывает темы в том же порядке,
+// что экран «Темы». При перестановке тем в TOPICS надо переставить и здесь
+// (ключи и значения прогресса при этом не страдают: localStorage хранит по
+// "topic:<key>", не по индексу). topic:capital в этом проходе переименован
+// «Картограф» → «Столичник» (Cartographer → Capitalist) — тематика прямее. ---
 addMulti("topic:mapFind",          "topic", "Географ",    "Geographer");
-addMulti("topic:silhouette",       "topic", "Топограф",   "Topographer");
 addMulti("topic:country",          "topic", "Флаговед",   "Flag Expert");
-addMulti("topic:capital",          "topic", "Картограф",  "Cartographer");
-addMulti("topic:countryByCapital", "topic", "Навигатор",  "Navigator");
-addMulti("topic:population",       "topic", "Демограф",   "Demographer");
-addMulti("topic:area",             "topic", "Землемер",   "Surveyor");
-addMulti("topic:language",         "topic", "Лингвист",   "Linguist");
-addMulti("topic:currency",         "topic", "Финансист",  "Financier");
-addMulti("topic:nativeName",       "topic", "Этнограф",   "Ethnographer");
+addMulti("topic:silhouette",       "topic", "Топограф",   "Topographer");
 addMulti("topic:coatOfArms",       "topic", "Геральдист", "Heraldist");
-addMulti("topic:density",          "topic", "Статистик",  "Statistician");
+addMulti("topic:capital",          "topic", "Столичник",  "Capitalist");
+addMulti("topic:population",       "topic", "Демограф",   "Demographer");
+addMulti("topic:nativeName",       "topic", "Этнограф",   "Ethnographer");
+addMulti("topic:language",         "topic", "Лингвист",   "Linguist");
 addMulti("topic:religion",         "topic", "Теолог",     "Theologian");
+addMulti("topic:currency",         "topic", "Финансист",  "Financier");
+addMulti("topic:countryByCapital", "topic", "Навигатор",  "Navigator");
+addMulti("topic:density",          "topic", "Статистик",  "Statistician");
+addMulti("topic:area",             "topic", "Землемер",   "Surveyor");
 
 // --- Категория volume (2) ---
 ACHIEVEMENT_DEFS["volume:games"] = {

@@ -82,7 +82,7 @@ import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
   from "./levels.js?v=20260574";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260576";
+  from "./achievements.js?v=20260577";
 import { initBackgroundRotation } from "./bg.js?v=20260572";
 
 const QUESTION_TIME_SEC = 30;
