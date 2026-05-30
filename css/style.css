@@ -1034,7 +1034,12 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   align-items: center;
   gap: 2px;
 }
+/* Иконки сундука и XP — webp с прозрачным фоном. У всех явно нет background
+   и border (если кто-то в будущем поставит — прозрачные углы webp окажутся
+   на цветной подложке). display:inline-block — чтобы коробка вокруг img
+   была предсказуемая (без baseline-зазора inline-replaced). */
 .menu-inv-icon {
+  display: inline-block;
   width: 64px;
   height: 64px;
   object-fit: contain;
@@ -1042,6 +1047,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 /* XP-иконка в инлайне (меню, экран ответа). */
 .xp-icon {
+  display: inline-block;
   width: 40px;
   height: 40px;
   object-fit: contain;
@@ -1050,6 +1056,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 /* Сундук в бонус-сетке (крупный, центрированный — родитель flex). */
 .bonus-chest-icon {
+  display: inline-block;
   width: 56px;
   height: 56px;
   object-fit: contain;
@@ -1058,6 +1065,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 /* Сундук в инлайн-строках (дейлик, вехи стрика, квесты, попап достижения).
    Размер привязан к шрифту окружающей строки, чтобы не выламываться. */
 .chest-inline-icon {
+  display: inline-block;
   width: 1.1em;
   height: 1.1em;
   object-fit: contain;

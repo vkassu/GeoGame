@@ -1,17 +1,17 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260578";
-import { t } from "./i18n.js?v=20260578";
+import { codeToEmoji, officialName } from "./data.js?v=20260583";
+import { t } from "./i18n.js?v=20260583";
 
 // HTML-фрагменты для встроенных иконок (сундук в бонус-сетке/строках наград,
 // XP-медалька в счётчике). Раньше использовались эмодзи 🧰 / ✨ через
 // .textContent — теперь приёмники переключены на .innerHTML и подставляют эти
 // строки. Cache-bust ?v= на ассеты — чтобы при подмене webp-файла браузер
 // не показывал старую картинку.
-export const CHEST_HTML = '<img src="img/chest.webp?v=20260578" class="chest-inline-icon" alt="сундук">';
-const CHEST_BONUS_HTML = '<img src="img/chest.webp?v=20260578" class="bonus-chest-icon" alt="сундук">';
-const XP_ICON_HTML = '<img src="img/xp_icon.webp?v=20260578" class="xp-icon" alt="XP">';
+export const CHEST_HTML = '<img src="img/chest.webp?v=20260583" class="chest-inline-icon" alt="сундук">';
+const CHEST_BONUS_HTML = '<img src="img/chest.webp?v=20260583" class="bonus-chest-icon" alt="сундук">';
+const XP_ICON_HTML = '<img src="img/xp_icon.webp?v=20260583" class="xp-icon" alt="XP">';
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
