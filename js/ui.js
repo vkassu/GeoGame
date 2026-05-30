@@ -2,7 +2,7 @@
 // Никакой игровой логики и state — только DOM.
 
 import { codeToEmoji, officialName } from "./data.js?v=20260583";
-import { t } from "./i18n.js?v=20260583";
+import { t } from "./i18n.js?v=20260585";
 
 // HTML-фрагменты для встроенных иконок (сундук в бонус-сетке/строках наград,
 // XP-медалька в счётчике). Раньше использовались эмодзи 🧰 / ✨ через
@@ -348,11 +348,12 @@ export function renderMenuProfile({ avatarUrl, username, level,
   // Инвентарь (только сундуки)
   document.getElementById("menu-inv-chests").textContent = String(inventory.chests);
 
-  // Кнопка «Память» — доступна при 100+ сундуках, иначе серая с подсказкой «нужно 100».
+  // Кнопка «Память» — доступна при 10+ сундуках, иначе серая с подсказкой
+  // «Нужно 10 🧰». Порог снижен со 100 при реализации мини-игры (2026-05-30).
   const memBtn = document.getElementById("menu-memory-btn");
   const memSub = document.getElementById("menu-memory-sub");
   if (memBtn) {
-    const unlocked = inventory.chests >= 100;
+    const unlocked = inventory.chests >= 10;
     memBtn.disabled = !unlocked;
     if (memSub) memSub.style.display = unlocked ? "none" : "";
   }
@@ -1232,4 +1233,90 @@ export function showXpRewardPopup({ earnedXp, bonusPercent, xpBefore, xpAfter, g
 
 export function hideXpRewardPopup() {
   document.getElementById("xp-reward-popup").style.display = "none";
+}
+
+// ===================== Мини-игра «Память» =====================
+// 100 карточек (50 пар) флагов в сетке 10×10. Логика и state — в main.js,
+// здесь только DOM-рендер. Открытие/закрытие — через CSS-класс .flipped
+// (3D-flip; .mem-card-back и .mem-card-front разнесены на 0/180deg).
+// Удаление пары — класс .mem-removed (opacity 0 + pointer-events none).
+
+export function renderMemoryGrid(countries) {
+  const grid = document.getElementById("memory-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  countries.forEach((country, i) => {
+    const card = document.createElement("div");
+    card.className = "mem-card";
+    card.dataset.index = String(i);
+    // window.handleMemoryCardClick регистрируется в main.js. Inline onclick
+    // оправдан тем, что 100 карточек строятся в одном проходе — добавлять
+    // 100 addEventListener было бы примерно так же, а через делегацию
+    // пришлось бы парсить data-index в обработчике родителя.
+    card.setAttribute("onclick", `window.handleMemoryCardClick(${i})`);
+
+    const back = document.createElement("div");
+    back.className = "mem-card-back";
+    back.textContent = "?";
+    card.appendChild(back);
+
+    const front = document.createElement("div");
+    front.className = "mem-card-front";
+    front.appendChild(
+      localAssetImg("flags", country.cca2, "mem-flag-img",
+        (img) => { img.replaceWith(document.createTextNode(codeToEmoji(country.cca2))); })
+    );
+    card.appendChild(front);
+
+    grid.appendChild(card);
+  });
+}
+
+export function flipMemoryCard(index, open) {
+  const card = document.querySelector(`.mem-card[data-index="${index}"]`);
+  if (!card) return;
+  card.classList.toggle("flipped", !!open);
+}
+
+export function removeMemoryPair(i, j) {
+  for (const idx of [i, j]) {
+    const card = document.querySelector(`.mem-card[data-index="${idx}"]`);
+    if (card) card.classList.add("mem-removed");
+  }
+}
+
+export function updateMemoryFooter(pairsFound, xp) {
+  const p = document.getElementById("memory-pairs-value");
+  const x = document.getElementById("memory-xp-value");
+  if (p) p.textContent = String(pairsFound);
+  if (x) x.textContent = xp + " XP";
+}
+
+// Показ финального попапа. Если #memory-result-popup ещё не создан —
+// создаём один раз внутри #memory-screen (по спеке: не в body — чтобы
+// не конфликтовать с другими попапами поверх #game). Callback —
+// onMenu, выполняется по кнопке «В меню».
+export function showMemoryResultPopup(xp, onMenu) {
+  const screen = document.getElementById("memory-screen");
+  if (!screen) return;
+  let popup = document.getElementById("memory-result-popup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "memory-result-popup";
+    popup.innerHTML = `
+      <div class="memory-result-card">
+        <div class="memory-result-title">🎉 Память пройдена!</div>
+        <div class="memory-result-subtitle" id="memory-result-xp"></div>
+        <button type="button" class="primary-btn" id="memory-result-btn">В меню</button>
+      </div>`;
+    screen.appendChild(popup);
+  }
+  document.getElementById("memory-result-xp").textContent = "+" + xp + " XP";
+  popup.style.display = "flex";
+  // Перепривязываем onclick, чтобы при повторном вызове onMenu обновился.
+  const btn = document.getElementById("memory-result-btn");
+  btn.onclick = () => {
+    popup.style.display = "none";
+    if (typeof onMenu === "function") onMenu();
+  };
 }

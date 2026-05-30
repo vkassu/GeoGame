@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260583";
+} from "./i18n.js?v=20260585";
 import {
   showScreen,
   getPlayAgainButton,
@@ -74,7 +74,12 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260584";
+  renderMemoryGrid,
+  flipMemoryCard,
+  removeMemoryPair,
+  updateMemoryFooter,
+  showMemoryResultPopup,
+} from "./ui.js?v=20260585";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260539";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
@@ -357,6 +362,12 @@ const state = {
   questionStartTime: 0,    // время показа текущего вопроса (для mastery:speed)
   bonusXpCredited: 0,      // фактически начисленный XP за бонусную ячейку (с учётом бонуса достижений)
   achievementQueue: [],    // очередь попапов новых уровней достижений
+  // ---- Мини-игра «Память» (match-pairs, 50 пар = 100 карточек) ----
+  memoryXP: 0,             // накопленный XP за текущую сессию памяти
+  memoryPairsFound: 0,     // сколько пар уже убрано (0..50)
+  memoryFlipped: [],       // индексы 0..1 открытых на этом ходу карточек
+  memoryLocked: false,     // блокировка ввода пока анимируется закрытие
+  memoryCountries: [],     // 100 элементов: 50 пар стран, перемешанных
   setup: {
     regions: [...DEFAULT_REGIONS],
     topicDifficulties: { ...DEFAULT_TOPIC_DIFFICULTIES }, // { topicKey: -1..3 }, -1 = выключено
@@ -1596,6 +1607,102 @@ function goToAchievements() {
   showScreen(state.screen);
 }
 
+// ---------- Мини-игра «Память» ----------
+// 10 сундуков за вход; в игре 50 пар (100 карточек) случайных флагов.
+// За пару +30 XP, за промах −5 (не ниже 0). По завершению весь
+// накопленный XP идёт в state.xpTotal. Выход из игры через #memory-exit-btn
+// сжигает XP (сундуки не возвращаются).
+
+const MEMORY_PRICE   = 10;   // сундуков за вход
+const MEMORY_PAIRS   = 50;
+const MEMORY_HIT_XP  = 30;
+const MEMORY_MISS_XP = -5;
+
+function startMemoryGame() {
+  if (state.inventory.chests < MEMORY_PRICE) return;
+  state.inventory.chests -= MEMORY_PRICE;
+  localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory));
+  if (state.user) {
+    saveUserData(state.user.uid, { inventory: state.inventory }).catch(console.error);
+  }
+
+  // 50 случайных стран → удвоить → перемешать.
+  const pool = shuffle(state.allCountries).slice(0, MEMORY_PAIRS);
+  state.memoryCountries = shuffle([...pool, ...pool]);
+
+  state.memoryXP = 0;
+  state.memoryPairsFound = 0;
+  state.memoryFlipped = [];
+  state.memoryLocked = false;
+
+  renderMemoryGrid(state.memoryCountries);
+  updateMemoryFooter(0, 0);
+  state.screen = "memory";
+  showScreen(state.screen);
+  refreshMenuScreen(); // счётчик сундуков в меню изменился
+}
+
+// window.handleMemoryCardClick — для inline-onclick на 100 карточках
+// (см. renderMemoryGrid в ui.js).
+function handleMemoryCardClick(index) {
+  if (state.memoryLocked) return;
+  const card = document.querySelector(`.mem-card[data-index="${index}"]`);
+  // Уже убранная или уже открытая карточка — игнор.
+  if (!card || card.classList.contains("mem-removed") ||
+      state.memoryFlipped.includes(index)) return;
+
+  flipMemoryCard(index, true);
+  state.memoryFlipped.push(index);
+  if (state.memoryFlipped.length < 2) return;
+
+  state.memoryLocked = true;
+  const [i, j] = state.memoryFlipped;
+  const match = state.memoryCountries[i].cca2 === state.memoryCountries[j].cca2;
+
+  if (match) {
+    state.memoryXP = Math.max(0, state.memoryXP + MEMORY_HIT_XP);
+    state.memoryPairsFound++;
+    updateMemoryFooter(state.memoryPairsFound, state.memoryXP);
+    setTimeout(() => {
+      removeMemoryPair(i, j);
+      state.memoryFlipped = [];
+      state.memoryLocked = false;
+      if (state.memoryPairsFound === MEMORY_PAIRS) {
+        setTimeout(endMemoryGame, 700);
+      }
+    }, 400);
+  } else {
+    state.memoryXP = Math.max(0, state.memoryXP + MEMORY_MISS_XP);
+    updateMemoryFooter(state.memoryPairsFound, state.memoryXP);
+    setTimeout(() => {
+      flipMemoryCard(i, false);
+      flipMemoryCard(j, false);
+      state.memoryFlipped = [];
+      state.memoryLocked = false;
+    }, 1000);
+  }
+}
+
+function endMemoryGame() {
+  const earned = state.memoryXP;
+  state.xpTotal += earned;
+  localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
+  if (state.user) {
+    saveUserData(state.user.uid, {
+      xpTotal: state.xpTotal,
+      inventory: state.inventory,
+    }).catch(console.error);
+  }
+  showMemoryResultPopup(earned, goToMenu);
+}
+
+// Выход из мини-игры до её завершения. XP сжигается, сундуки не возвращаются.
+function exitMemoryGame() {
+  // i18n строк для попапа выхода нет (по спеке отложено) — confirm встроенный.
+  if (!confirm("Выйти? Весь накопленный XP сгорит.")) return;
+  goToMenu();
+}
+
 // ---------- Энциклопедия (3 вида: регионы / страны / карточка) ----------
 
 let encView = "regions";      // 'regions' | 'countries' | 'detail'
@@ -1843,7 +1950,10 @@ async function init() {
   });
   // Попап XP-награды: «OK» → скрыть.
   document.getElementById("xpr-ok-btn")?.addEventListener("click", hideXpRewardPopup);
-  document.getElementById("menu-memory-btn")?.addEventListener("click", () => console.log("Memory game: coming soon"));
+  document.getElementById("menu-memory-btn")?.addEventListener("click", startMemoryGame);
+  document.getElementById("memory-exit-btn")?.addEventListener("click", exitMemoryGame);
+  // Inline-onclick на 100 карточках памяти зовёт window.handleMemoryCardClick.
+  window.handleMemoryCardClick = handleMemoryCardClick;
   document.getElementById("menu-auth-btn").addEventListener("click", () => {
     if (state.user) signOutUser();
     else signInWithGoogle().catch(console.error);
