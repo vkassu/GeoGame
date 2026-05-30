@@ -1,17 +1,17 @@
 // Слой представления: переключение экранов и заполнение их данными.
 // Никакой игровой логики и state — только DOM.
 
-import { codeToEmoji, officialName } from "./data.js?v=20260572";
-import { t } from "./i18n.js?v=20260575";
+import { codeToEmoji, officialName } from "./data.js?v=20260578";
+import { t } from "./i18n.js?v=20260578";
 
 // HTML-фрагменты для встроенных иконок (сундук в бонус-сетке/строках наград,
 // XP-медалька в счётчике). Раньше использовались эмодзи 🧰 / ✨ через
 // .textContent — теперь приёмники переключены на .innerHTML и подставляют эти
 // строки. Cache-bust ?v= на ассеты — чтобы при подмене webp-файла браузер
 // не показывал старую картинку.
-export const CHEST_HTML = '<img src="img/chest.webp?v=20260575" class="chest-inline-icon" alt="сундук">';
-const CHEST_BONUS_HTML = '<img src="img/chest.webp?v=20260575" class="bonus-chest-icon" alt="сундук">';
-const XP_ICON_HTML = '<img src="img/xp_icon.webp?v=20260575" class="xp-icon" alt="XP">';
+export const CHEST_HTML = '<img src="img/chest.webp?v=20260578" class="chest-inline-icon" alt="сундук">';
+const CHEST_BONUS_HTML = '<img src="img/chest.webp?v=20260578" class="bonus-chest-icon" alt="сундук">';
+const XP_ICON_HTML = '<img src="img/xp_icon.webp?v=20260578" class="xp-icon" alt="XP">';
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -422,9 +422,13 @@ async function loadWorldmapData() {
   return worldmapData;
 }
 
-// Рисует карту мира в flagEl с подсвеченной страной (оранжевой). Микрогосударства
-// (bbox < 8px) дополнительно помечает кружком. Автозум к bbox страны (MIN 80, отступ
-// 50%). Токен защищает от гонки: если вопрос сменился, пока грузилась карта, — выходим.
+// Рисует карту мира в flagEl с подсвеченной страной (оранжевой заливкой пути).
+// Автозум к bbox страны (MIN 80, отступ 50%). Токен защищает от гонки: если вопрос
+// сменился, пока грузилась карта, — выходим. Кружок-подсказка сверху больше не
+// рисуется для стран с геометрией (правка 2026-05-30: после автозума к MIN=80
+// заливка видна и для микрогосударств, кружок только мешал восприятию). Для
+// dot-only стран (13 без геометрии в Natural Earth) точка ОСТАЁТСЯ — без неё
+// карта для них пуста и вопрос неиграбелен.
 async function renderMapFind(country, flagEl) {
   const NS = "http://www.w3.org/2000/svg";
   const token = ++mapRenderToken;
@@ -454,11 +458,10 @@ async function renderMapFind(country, flagEl) {
 
   if (tc) {
     const [cx, cy] = tc.c;
-    let useDot = !!tc.dotOnly; // dot-only страны всегда точкой
+    const isDotOnly = !!tc.dotOnly; // нет d/bbox — только центроид
     if (tc.bbox) {
       const [x0, y0, x1, y1] = tc.bbox;
       const bw = x1 - x0, bh = y1 - y0;
-      if (bw < 8 || bh < 8) useDot = true; // микрогосударство — тоже точкой
       // Автозум к реальной геометрии
       const PAD = 0.5, MIN = 80;
       let zx0 = x0, zy0 = y0;
@@ -472,7 +475,9 @@ async function renderMapFind(country, flagEl) {
       const SIZE = 120;
       svg.setAttribute("viewBox", `${cx - SIZE} ${cy - SIZE / 2} ${SIZE * 2} ${SIZE}`);
     }
-    if (useDot) {
+    // Точка-подсказка — ТОЛЬКО для dot-only стран (без геометрии: GF/GP/MQ/RE/YT
+    // и т. п.). Для стран с реальным контуром заливка видна и без неё.
+    if (isDotOnly) {
       const dot = document.createElementNS(NS, "circle");
       dot.setAttribute("cx", cx);
       dot.setAttribute("cy", cy);

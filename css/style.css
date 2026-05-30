@@ -991,25 +991,25 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   gap: 2px;
 }
 .menu-inv-icon {
-  width: 32px;
-  height: 32px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
   vertical-align: middle;
 }
 /* XP-иконка в инлайне (меню, экран ответа). */
 .xp-icon {
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   vertical-align: middle;
   margin-right: 4px;
 }
 /* Сундук в бонус-сетке (крупный, центрированный — родитель flex). */
 .bonus-chest-icon {
-  width: 32px;
-  height: 32px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
-  display: block;
+  vertical-align: middle;
 }
 /* Сундук в инлайн-строках (дейлик, вехи стрика, квесты, попап достижения).
    Размер привязан к шрифту окружающей строки, чтобы не выламываться. */

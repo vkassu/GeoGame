@@ -20,7 +20,7 @@ import {
   hasReligion,
   hasSilhouette,
   hasMapFind,
-} from "./data.js?v=20260572";
+} from "./data.js?v=20260578";
 import {
   getLang,
   setLang,
@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260575";
+} from "./i18n.js?v=20260578";
 import {
   showScreen,
   getPlayAgainButton,
@@ -74,7 +74,7 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260575";
+} from "./ui.js?v=20260578";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260539";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
