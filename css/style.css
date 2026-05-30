@@ -283,10 +283,15 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .count-btn:hover { filter: brightness(1.15); }
 .count-btn:active { filter: brightness(0.9); transform: scale(0.98); }
 
+/* Шапка игрового вопроса: подсказка строго по центру (независимо от ширин
+   таймера/счётчика), таймер и счётчик абсолютно по краям. До правки 2026-05-30
+   использовался justify-content:space-between — кнопка визуально съезжала,
+   потому что левый таймер «⏱ 30» и правый «Вопрос 1 из 10» разной ширины. */
 .meta {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  position: relative;
   color: #555;
   font-size: 14px;
   margin-bottom: 8px;
@@ -330,9 +335,15 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .hint-seg.filled { background: #4caf50; }
 
 .q-timer {
+  position: absolute;
+  left: 0;
   font-weight: bold;
   min-width: 48px;
   text-align: center;
+}
+#q-counter {
+  position: absolute;
+  right: 0;
 }
 .q-timer.warning { color: #e67e22; }
 .q-timer.danger  { color: #c0392b; }
@@ -1065,7 +1076,10 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .menu-memory-sub { font-size: 12px; font-weight: 600; opacity: 0.9; }
 
 /* В режиме обучения шапка (.meta: таймер + подсказка + счётчик) не нужна */
-#game-screen.training-mode .meta { display: none; }
+/* В обучении нет таймера/подсказки — но место под .meta оставляем
+   (visibility:hidden), чтобы при переходе «обычный вопрос → обучение»
+   флаг не прыгал вверх (правка 2026-05-30). */
+#game-screen.training-mode .meta { visibility: hidden; }
 
 /* === Экран «Обучение» (Работа над ошибками) === */
 .training-subtitle {

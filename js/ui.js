@@ -80,17 +80,21 @@ export function renderAnswerResult(isCorrect, pickedValue, correctValue, earnedX
 }
 export function showAnswerResult() {
   const game = document.getElementById("game-screen");
+  // .options скрываем через display — answer-result встаёт на их место
+  // (иначе экран бы вырос на высоту кнопок). А вот .meta и .progress
+  // выше — их прячем через visibility, чтобы не двигать вверх флаг и
+  // answer-result (правка 2026-05-30 — раньше layout shift ~50px).
   document.getElementById("options").style.display = "none";
-  game.querySelector(".meta").style.display = "none";
-  game.querySelector(".progress").style.display = "none";
+  game.querySelector(".meta").style.visibility = "hidden";
+  game.querySelector(".progress").style.visibility = "hidden";
   document.getElementById("answer-result").style.display = "block";
 }
 export function hideAnswerResult() {
   const game = document.getElementById("game-screen");
   document.getElementById("answer-result").style.display = "none";
   document.getElementById("options").style.display = "";
-  game.querySelector(".meta").style.display = "";
-  game.querySelector(".progress").style.display = "";
+  game.querySelector(".meta").style.visibility = "";
+  game.querySelector(".progress").style.visibility = "";
 }
 
 export function updateTimer(seconds) {
