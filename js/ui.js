@@ -2,7 +2,16 @@
 // Никакой игровой логики и state — только DOM.
 
 import { codeToEmoji, officialName } from "./data.js?v=20260572";
-import { t } from "./i18n.js?v=20260572";
+import { t } from "./i18n.js?v=20260575";
+
+// HTML-фрагменты для встроенных иконок (сундук в бонус-сетке/строках наград,
+// XP-медалька в счётчике). Раньше использовались эмодзи 🧰 / ✨ через
+// .textContent — теперь приёмники переключены на .innerHTML и подставляют эти
+// строки. Cache-bust ?v= на ассеты — чтобы при подмене webp-файла браузер
+// не показывал старую картинку.
+export const CHEST_HTML = '<img src="img/chest.webp?v=20260575" class="chest-inline-icon" alt="сундук">';
+const CHEST_BONUS_HTML = '<img src="img/chest.webp?v=20260575" class="bonus-chest-icon" alt="сундук">';
+const XP_ICON_HTML = '<img src="img/xp_icon.webp?v=20260575" class="xp-icon" alt="XP">';
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -56,12 +65,16 @@ export function applyHintToOptions(buttons, correctValue) {
   });
 }
 
-export function renderAnswerResult(isCorrect, pickedValue, correctValue) {
+export function renderAnswerResult(isCorrect, pickedValue, correctValue, earnedXp = 0) {
   const banner = document.getElementById("answer-banner");
   banner.className = "answer-banner " + (isCorrect ? "correct" : "wrong");
   banner.textContent = isCorrect ? t("answer.correct") : t("answer.wrong");
 
-  document.getElementById("answer-xp").textContent = isCorrect ? "+10 XP" : "";
+  // earnedXp — фактически начисленное за этот ответ (с учётом сложности и бонуса
+  // достижений). В обучении XP не начисляется → передаётся 0 → строка пустая.
+  // .innerHTML потому что вставляем <img class="xp-icon">.
+  const xpEl = document.getElementById("answer-xp");
+  xpEl.innerHTML = (isCorrect && earnedXp > 0) ? `${XP_ICON_HTML}+${earnedXp} XP` : "";
   document.getElementById("answer-picked").textContent = isCorrect ? "" : t("answer.your", { v: pickedValue });
   document.getElementById("answer-correct-val").textContent = correctValue;
 }
@@ -667,7 +680,8 @@ export function renderResultSummary({ correct, total, sessionXP, bonusText, tota
   const bonusRow = document.getElementById("res-bonus-row");
   if (bonusText) {
     bonusRow.style.display = "";
-    document.getElementById("res-bonus-val").textContent = bonusText;
+    // .innerHTML — bonusText из formatPrize() может содержать <img> (i18n.bonus.prize.chest).
+    document.getElementById("res-bonus-val").innerHTML = bonusText;
   } else {
     bonusRow.style.display = "none";
   }
@@ -789,7 +803,7 @@ export function revealBonusGrid(cells, pickedIndex, pickedCountryName, pickedPri
     prizeEl.className = "bonus-cell-prize";
     const iconEl = document.createElement("span");
     iconEl.className = "bonus-cell-prize-icon";
-    iconEl.textContent = prizeIcon(prize.type);
+    iconEl.innerHTML = prizeIcon(prize.type); // HTML — для chest вернётся <img>, для xp — эмодзи
     const valEl = document.createElement("span");
     valEl.textContent = prize.type === "xp"
       ? formatXpShort(prize.amount)
@@ -802,14 +816,18 @@ export function revealBonusGrid(cells, pickedIndex, pickedCountryName, pickedPri
   const resultBlock = document.getElementById("bonus-result");
   resultBlock.style.display = "";
   document.getElementById("bonus-result-country").textContent = pickedCountryName;
-  document.getElementById("bonus-result-prize").textContent = pickedPrizeText;
+  // .innerHTML — pickedPrizeText может содержать <img> (см. i18n.bonus.prize.chest).
+  document.getElementById("bonus-result-prize").innerHTML = pickedPrizeText;
   document.getElementById("bonus-end-btn").disabled = false;
 }
 
+// Возвращает HTML-строку для иконки приза (вставляется через .innerHTML).
+// xp пока остаётся ✨ (специального ассета нет — общая XP-медалька визуально
+// меньше и хуже читается на крупной плашке бонуса).
 function prizeIcon(type) {
   switch (type) {
     case "xp":    return "✨";
-    case "chest": return "🧰";
+    case "chest": return CHEST_BONUS_HTML;
     default:      return "?";
   }
 }
@@ -844,7 +862,7 @@ function renderTasksDaily(body, daily, onClaim) {
   body.innerHTML = "";
   const prize = document.createElement("div");
   prize.className = "tasks-prize-line";
-  prize.textContent = `+${daily.prizeXp} XP   +${daily.prizeChests} 🧰`;
+  prize.innerHTML = `+${daily.prizeXp} XP   +${daily.prizeChests} ${CHEST_HTML}`;
   body.appendChild(prize);
 
   if (daily.available) {
@@ -895,7 +913,7 @@ function renderTasksStreak(body, streak) {
 
     const reward = document.createElement("div");
     reward.className = "tasks-milestone-reward";
-    reward.textContent = `${m.reward.xp} XP +${m.reward.chests}🧰`;
+    reward.innerHTML = `${m.reward.xp} XP +${m.reward.chests}${CHEST_HTML}`;
     mk.appendChild(reward);
 
     const status = document.createElement("div");
@@ -966,7 +984,7 @@ function buildQuestCard(q, onClaim) {
 
   const reward = document.createElement("div");
   reward.className = "tasks-quest-reward";
-  reward.textContent = `+${q.rewardXp} XP  +${q.rewardChests} 🧰`;
+  reward.innerHTML = `+${q.rewardXp} XP  +${q.rewardChests} ${CHEST_HTML}`;
   card.appendChild(reward);
 
   return card;
@@ -1151,7 +1169,8 @@ export function showAchievementPopup({ icon, name, levelStr, rewardStr }) {
   document.getElementById("ach-name").textContent = name;
   document.getElementById("ach-level").textContent = levelStr;
   const rewardEl = document.getElementById("ach-reward");
-  rewardEl.textContent = rewardStr || "";
+  // .innerHTML — rewardStr из main.js handleNewAchievementLevels может содержать <img>.
+  rewardEl.innerHTML = rewardStr || "";
   rewardEl.style.display = rewardStr ? "" : "none";
 
   const popup = document.getElementById("achievement-popup");

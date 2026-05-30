@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260572";
+} from "./i18n.js?v=20260575";
 import {
   showScreen,
   getPlayAgainButton,
@@ -43,6 +43,7 @@ import {
   updateTimer,
   renderQuestion,
   preloadNextQuestion,
+  CHEST_HTML,
   markAnswer,
   renderResultSummary,
   renderGamesPlayed,
@@ -73,7 +74,7 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260573";
+} from "./ui.js?v=20260575";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260539";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
@@ -731,6 +732,9 @@ function handleHintClick() {
 function handleAnswer(picked, allButtons, correct) {
   clearTimer();
   const isCorrect = picked.value === correct;
+  // Сколько XP фактически начислено за этот ответ (для отображения на экране
+  // результата ответа). В обучении/при неверном — 0.
+  let earned = 0;
   if (isCorrect) {
     state.score++;
     // Перезарядка подсказки: 5 правильных подряд → подсказка доступна.
@@ -766,8 +770,8 @@ function handleAnswer(picked, allButtons, correct) {
     // q уже взят выше (state.questions[state.currentQuestion]) — переиспользуем
     // вместо повторного обращения по индексу.
     if (!state.isTraining) {
-      const earned = applyBonus(getXPForAnswer(q.difficultyIndex),
-                                getAchievementBonus(state.achievements));
+      earned = applyBonus(getXPForAnswer(q.difficultyIndex),
+                          getAchievementBonus(state.achievements));
       state.xpTotal += earned;
       state.xpEarnedThisGame += earned;
       localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal));
@@ -803,7 +807,7 @@ function handleAnswer(picked, allButtons, correct) {
     if (correctEntry) markAnswer(correctEntry.button, "correct");
   }
 
-  renderAnswerResult(isCorrect, picked.value, correct);
+  renderAnswerResult(isCorrect, picked.value, correct, earned);
   showAnswerResult();
 }
 
@@ -1298,7 +1302,7 @@ function handleNewAchievementLevels(newLevels) {
     const maxLevel = def.maxLevel || 1;
     const stars = "★".repeat(newLevel) + "☆".repeat(Math.max(0, maxLevel - newLevel));
     const rewardStr = reward?.chests
-      ? `+${reward.chests} 🧰`
+      ? `+${reward.chests} ${CHEST_HTML}`
       : (def.xpBonusPerLevel ? t("achievements.xp-bonus", { n: newLevel * def.xpBonusPerLevel }) : "");
     state.achievementQueue.push({
       icon: def.icon || "🏆",
