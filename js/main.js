@@ -20,7 +20,7 @@ import {
   hasReligion,
   hasSilhouette,
   hasMapFind,
-} from "./data.js?v=20260570";
+} from "./data.js?v=20260571";
 import {
   getLang,
   setLang,
@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260570";
+} from "./i18n.js?v=20260571";
 import {
   showScreen,
   getPlayAgainButton,
@@ -72,16 +72,16 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260570";
+} from "./ui.js?v=20260571";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260538";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260570";
+  from "./levels.js?v=20260571";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260570";
-import { initBackgroundRotation } from "./bg.js?v=20260570";
+  from "./achievements.js?v=20260571";
+import { initBackgroundRotation } from "./bg.js?v=20260571";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -100,6 +100,23 @@ const DIFFICULTIES = [
 //   valid   — фильтр стран, пригодных для темы
 // label/question — геттеры: читают текущий язык из i18n.js в момент вызова.
 const TOPICS = {
+  // Карта/силуэт — первыми в порядке TOPICS (#46). initLevelUnlocks строит уровни
+  // из Object.keys(TOPICS), поэтому это и UI-порядок, и порядок разблокировки:
+  // mapFind d0 → lv1, silhouette d0 → lv2.
+  mapFind: {
+    get label() { return TOPIC_LABELS.mapFind[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.mapFind[getLang()]; },
+    prompt: (c) => ({ type: "mapFind", country: c }),
+    answer: (c) => getName(c),
+    valid: (c) => hasMapFind(c),
+  },
+  silhouette: {
+    get label() { return TOPIC_LABELS.silhouette[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.silhouette[getLang()]; },
+    prompt: (c) => ({ type: "silhouette", country: c }),
+    answer: (c) => getName(c),
+    valid: (c) => hasSilhouette(c),
+  },
   country: {
     get label() { return TOPIC_LABELS.country[getLang()]; },
     get question() { return TOPIC_QUESTIONS.country[getLang()]; },
@@ -176,25 +193,6 @@ const TOPICS = {
     prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: (c) => religionName(c),
     valid: (c) => hasReligion(c),
-  },
-  // Тип А (назови страну): показываем карту мира с выделенной страной, выбрать её.
-  // valid гейтится манифестом карты (data/worldmap_index.json). Легче силуэта
-  // (видно окружение) → стоит перед ним в порядке TOPICS.
-  mapFind: {
-    get label() { return TOPIC_LABELS.mapFind[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.mapFind[getLang()]; },
-    prompt: (c) => ({ type: "mapFind", country: c }),
-    answer: (c) => getName(c),
-    valid: (c) => hasMapFind(c),
-  },
-  // Тип А (назови страну): показываем SVG-контур границ, выбрать страну.
-  // valid гейтится манифестом силуэтов (есть не у всех стран — мелкие острова).
-  silhouette: {
-    get label() { return TOPIC_LABELS.silhouette[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.silhouette[getLang()]; },
-    prompt: (c) => ({ type: "silhouette", country: c }),
-    answer: (c) => getName(c),
-    valid: (c) => hasSilhouette(c),
   },
 };
 
