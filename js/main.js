@@ -82,7 +82,7 @@ import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
   from "./levels.js?v=20260574";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260572";
+  from "./achievements.js?v=20260576";
 import { initBackgroundRotation } from "./bg.js?v=20260572";
 
 const QUESTION_TIME_SEC = 30;
@@ -109,23 +109,19 @@ const DIFFICULTIES = [
 //   answer  — функция, возвращающая правильный ответ (и текст вариантов)
 //   valid   — фильтр стран, пригодных для темы
 // label/question — геттеры: читают текущий язык из i18n.js в момент вызова.
+//
+// Порядок ключей = порядок UI на экране «Темы» = порядок разблокировок
+// (initLevelUnlocks(Object.keys(TOPICS)) ниже строит LEVEL_UNLOCKS из этого
+// порядка). Группировка: визуал-первой (карта/флаг/силуэт/герб) → ключевая
+// инфа о стране (столица/население/самоназвание/язык/религия/валюта) →
+// инверсии и статистика (по столице → страна, плотность, площадь).
 const TOPICS = {
-  // Карта/силуэт — первыми в порядке TOPICS (#46). initLevelUnlocks строит уровни
-  // из Object.keys(TOPICS), поэтому это и UI-порядок, и порядок разблокировки:
-  // mapFind d0 → lv1, silhouette d0 → lv2.
   mapFind: {
     get label() { return TOPIC_LABELS.mapFind[getLang()]; },
     get question() { return TOPIC_QUESTIONS.mapFind[getLang()]; },
     prompt: (c) => ({ type: "mapFind", country: c }),
     answer: (c) => getName(c),
     valid: (c) => hasMapFind(c),
-  },
-  silhouette: {
-    get label() { return TOPIC_LABELS.silhouette[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.silhouette[getLang()]; },
-    prompt: (c) => ({ type: "silhouette", country: c }),
-    answer: (c) => getName(c),
-    valid: (c) => hasSilhouette(c),
   },
   country: {
     get label() { return TOPIC_LABELS.country[getLang()]; },
@@ -134,18 +130,25 @@ const TOPICS = {
     answer: (c) => getName(c),
     valid: () => true,
   },
+  silhouette: {
+    get label() { return TOPIC_LABELS.silhouette[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.silhouette[getLang()]; },
+    prompt: (c) => ({ type: "silhouette", country: c }),
+    answer: (c) => getName(c),
+    valid: (c) => hasSilhouette(c),
+  },
+  coatOfArms: {
+    get label() { return TOPIC_LABELS.coatOfArms[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.coatOfArms[getLang()]; },
+    prompt: (c) => ({ type: "coa", country: c }),
+    answer: (c) => getName(c),
+    valid: hasCoatOfArms,
+  },
   capital: {
     get label() { return TOPIC_LABELS.capital[getLang()]; },
     get question() { return TOPIC_QUESTIONS.capital[getLang()]; },
     prompt: (c) => ({ type: "text", text: getName(c) }),
     answer: (c) => getCapital(c),
-    valid: hasCapital,
-  },
-  countryByCapital: {
-    get label() { return TOPIC_LABELS.countryByCapital[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.countryByCapital[getLang()]; },
-    prompt: (c) => ({ type: "text", text: getCapital(c) }),
-    answer: (c) => getName(c),
     valid: hasCapital,
   },
   population: {
@@ -155,12 +158,12 @@ const TOPICS = {
     answer: (c) => getPopulationFormatted(c),
     valid: (c) => c.population > 0,
   },
-  area: {
-    get label() { return TOPIC_LABELS.area[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.area[getLang()]; },
-    prompt: (c) => ({ type: "text", text: getName(c) }),
-    answer: (c) => getAreaFormatted(c),
-    valid: (c) => c.area > 0,
+  nativeName: {
+    get label() { return TOPIC_LABELS.nativeName[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.nativeName[getLang()]; },
+    prompt: (c) => ({ type: "text", text: nativeNameStr(c) }),
+    answer: (c) => getName(c),
+    valid: hasNativeName,
   },
   language: {
     get label() { return TOPIC_LABELS.language[getLang()]; },
@@ -169,6 +172,13 @@ const TOPICS = {
     answer: languageName,
     valid: hasLanguages,
   },
+  religion: {
+    get label() { return TOPIC_LABELS.religion[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.religion[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getName(c) }),
+    answer: (c) => religionName(c),
+    valid: (c) => hasReligion(c),
+  },
   currency: {
     get label() { return TOPIC_LABELS.currency[getLang()]; },
     get question() { return TOPIC_QUESTIONS.currency[getLang()]; },
@@ -176,19 +186,12 @@ const TOPICS = {
     answer: currencyName,
     valid: hasCurrencies,
   },
-  nativeName: {
-    get label() { return TOPIC_LABELS.nativeName[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.nativeName[getLang()]; },
-    prompt: (c) => ({ type: "text", text: nativeNameStr(c) }),
+  countryByCapital: {
+    get label() { return TOPIC_LABELS.countryByCapital[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.countryByCapital[getLang()]; },
+    prompt: (c) => ({ type: "text", text: getCapital(c) }),
     answer: (c) => getName(c),
-    valid: hasNativeName,
-  },
-  coatOfArms: {
-    get label() { return TOPIC_LABELS.coatOfArms[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.coatOfArms[getLang()]; },
-    prompt: (c) => ({ type: "coa", country: c }),
-    answer: (c) => getName(c),
-    valid: hasCoatOfArms,
+    valid: hasCapital,
   },
   density: {
     get label() { return TOPIC_LABELS.density[getLang()]; },
@@ -197,12 +200,12 @@ const TOPICS = {
     answer: (c) => getDensityFormatted(c, getLang()),
     valid: (c) => hasDensity(c),
   },
-  religion: {
-    get label() { return TOPIC_LABELS.religion[getLang()]; },
-    get question() { return TOPIC_QUESTIONS.religion[getLang()]; },
+  area: {
+    get label() { return TOPIC_LABELS.area[getLang()]; },
+    get question() { return TOPIC_QUESTIONS.area[getLang()]; },
     prompt: (c) => ({ type: "text", text: getName(c) }),
-    answer: (c) => religionName(c),
-    valid: (c) => hasReligion(c),
+    answer: (c) => getAreaFormatted(c),
+    valid: (c) => c.area > 0,
   },
 };
 

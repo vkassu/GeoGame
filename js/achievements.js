@@ -40,7 +40,11 @@ addMulti("region:africa",   "region", "Знаток Африки",  "Africa Expe
 addMulti("region:americas", "region", "Знаток Америк",  "Americas Expert");
 addMulti("region:oceania",  "region", "Знаток Океании", "Oceania Expert");
 
-// --- Категория topic (13) — порядок совпадает с TOPICS (#46: mapFind/silhouette первыми) ---
+// --- Категория topic (13). Порядок отображения на экране достижений зафиксирован
+// исторически (#46) и НЕ переставляется автоматически вслед за изменениями порядка
+// ключей в TOPICS (см. перестановку 2026-05-30: mapFind/country/silhouette/...).
+// Если захочется синхронизировать с актуальным UI-порядком тем — переставить
+// блоки addMulti ниже; ключи и значения прогресса при этом не страдают. ---
 addMulti("topic:mapFind",          "topic", "Географ",    "Geographer");
 addMulti("topic:silhouette",       "topic", "Топограф",   "Topographer");
 addMulti("topic:country",          "topic", "Флаговед",   "Flag Expert");
