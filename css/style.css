@@ -540,13 +540,14 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .answer-banner.correct { background: #2a9d2a; }
 .answer-banner.wrong   { background: #c0392b; }
 .answer-body {
-  background: #fff;
+  background: #fdf3dc;
+  border: 1.5px solid var(--brass-border);
   padding: 16px 12px 10px;
   color: #111;
 }
-.answer-xp   { font-size: 1rem; color: #2a7a2a; margin-bottom: 6px; }
+.answer-xp   { font-size: 1rem; color: var(--text-brass); margin-bottom: 6px; }
 .answer-picked { font-size: 0.95rem; color: #888; margin-bottom: 4px; }
-.answer-correct-val { font-size: 1.3rem; font-weight: bold; margin-bottom: 8px; }
+.answer-correct-val { font-size: 1.3rem; font-weight: bold; color: var(--text-dark); margin-bottom: 8px; }
 .answer-hint { font-size: 0.8rem; color: #aaa; }
 
 .primary-btn {
@@ -598,15 +599,17 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .answer-banner.correct { background: #4CAF50; }
 .answer-banner.wrong   { background: #e53935; }
 .answer-body {
-  background: white;
+  background: #fdf3dc;
+  border: 1.5px solid var(--brass-border);
+  border-top: none; /* стык с банером без двойной линии */
   border-radius: 0 0 12px 12px;
   padding: 16px;
   text-align: center;
   cursor: pointer;
 }
-.answer-xp     { font-size: 15px; color: #555; margin-bottom: 6px; }
+.answer-xp     { font-size: 15px; color: var(--text-brass); margin-bottom: 6px; }
 .answer-picked { font-size: 16px; color: #333; margin-bottom: 8px; }
-.answer-correct-val { font-size: 24px; font-weight: bold; color: #111; margin-bottom: 12px; }
+.answer-correct-val { font-size: 24px; font-weight: bold; color: var(--text-dark); margin-bottom: 12px; }
 .answer-hint   { font-size: 12px; color: #aaa; font-style: italic; }
 
 /* ---- Авторизация ---- */
@@ -621,8 +624,8 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   align-items: center;
   gap: 10px;
   padding: 9px 18px;
-  background: #fff;
-  border: 2px solid #d0d7de;
+  background: var(--parchment);
+  border: 2px solid var(--brass-border);
   border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
@@ -633,17 +636,17 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
 }
 .auth-sign-in-btn:hover {
-  border-color: #4285F4;
-  box-shadow: 0 2px 8px rgba(66,133,244,.25);
+  border-color: var(--brass-border-dark);
+  box-shadow: 0 2px 8px rgba(139,94,26,.25);
 }
 
 .auth-user-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  background: #f4f7fa;
-  border: 2px solid #d0d7de;
+  padding: 8px 12px;
+  background: #fdf3dc;
+  border: 1px solid #c4933a;
   border-radius: 10px;
   font-size: 14px;
 }
@@ -885,9 +888,9 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   transition: background .15s, color .15s, border-color .15s;
 }
 .diff-btn-locked {
-  border-color: #e3e8ee;
-  color: #8a96a3;
-  background: #f7f9fb;
+  border-color: #c4933a;
+  color: #9a7040;
+  background: #f0ddb8;
   cursor: not-allowed;
   /* Влезает «🔒 5» — пилюля авто-ширины (высота прежняя 32px) */
   width: auto;
@@ -995,8 +998,8 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
    фон — наследует .screen (белый). */
 
 .menu-profile {
-  background: #f4f7fa;
-  border: 1px solid #e3e8ee;
+  background: #fdf3dc;
+  border: 1px solid #c4933a;
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 20px;
@@ -1009,7 +1012,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 }
 .menu-avatar { border-radius: 50%; object-fit: cover; }
 .menu-guest-icon { font-size: 1.5rem; line-height: 1; }
-.menu-username { flex: 1; text-align: left; font-size: 1rem; font-weight: bold; color: #1a1a1a; }
+.menu-username { flex: 1; text-align: left; font-size: 1rem; font-weight: bold; color: var(--text-dark); }
 .menu-level-badge {
   background: var(--brass-border-dark);
   border: 2px solid var(--brass-border-dark);
@@ -1178,9 +1181,9 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   position: relative;
   height: 0;
   padding-top: 100%;
-  border: 2px solid #b0bec5;
+  border: 1.5px solid var(--brass-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--parchment);
   cursor: pointer;
   overflow: hidden;
   transition: filter .15s, transform .1s, border-color .15s;
@@ -1200,7 +1203,10 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 .bonus-cell:disabled { cursor: default; }
 
 /* Закрытая ячейка — просто флаг страны (бант убран в #24.1) */
-.bonus-cell-closed { background: linear-gradient(to bottom, #fff, #e3e8ee); }
+.bonus-cell-closed {
+  background: linear-gradient(to bottom, #f9edd5, #e8c97a);
+  border: 1.5px solid var(--brass-border);
+}
 .bonus-cell-closed .bonus-cell-flag {
   width: 100%;
   height: 100%;
@@ -1217,7 +1223,10 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
 
 /* Раскрытая ячейка — флаг сверху + приз снизу */
 /* Раскрытая ячейка — только приз (без флага, нейтральный фон) */
-.bonus-cell-revealed { background: #f4f7fa; }
+.bonus-cell-revealed {
+  background: #fdf3dc;
+  border: 1.5px solid #c4933a;
+}
 .bonus-cell-revealed .bonus-cell-flag { display: none; }
 .bonus-cell-revealed .bonus-cell-prize {
   display: flex;

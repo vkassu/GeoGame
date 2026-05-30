@@ -12,6 +12,9 @@ import { t } from "./i18n.js?v=20260583";
 export const CHEST_HTML = '<img src="img/chest.webp?v=20260583" class="chest-inline-icon" alt="сундук">';
 const CHEST_BONUS_HTML = '<img src="img/chest.webp?v=20260583" class="bonus-chest-icon" alt="сундук">';
 const XP_ICON_HTML = '<img src="img/xp_icon.webp?v=20260583" class="xp-icon" alt="XP">';
+// XP-иконка в бонус-сетке (бывшая «✨»). Inline-стили — иконка маленькая (24px),
+// специальный CSS-класс заводить ради одного места избыточно.
+const XP_BONUS_HTML = '<img src="img/xp_icon.webp?v=20260583" style="width:24px;height:24px;vertical-align:middle" alt="XP">';
 
 export function showScreen(name) {
   const screens = document.querySelectorAll(".screen");
@@ -835,7 +838,7 @@ export function revealBonusGrid(cells, pickedIndex, pickedCountryName, pickedPri
 // меньше и хуже читается на крупной плашке бонуса).
 function prizeIcon(type) {
   switch (type) {
-    case "xp":    return "✨";
+    case "xp":    return XP_BONUS_HTML;
     case "chest": return CHEST_BONUS_HTML;
     default:      return "?";
   }
