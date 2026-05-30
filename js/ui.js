@@ -353,6 +353,7 @@ function localAssetImg(dir, cca2, className, onExhausted) {
   const img = document.createElement("img");
   if (className) img.className = className;
   img.alt = cca2 || "";
+  img.decoding = "async"; // не блокируем main thread на декодировании
   let stage = 0;
   img.onerror = () => {
     stage++;
@@ -365,6 +366,36 @@ function localAssetImg(dir, cca2, className, onExhausted) {
   };
   img.src = `./img/${dir}/${code}.svg`;
   return img;
+}
+
+// Предзагрузка ассета следующего вопроса в HTTP-кеш браузера. К моменту,
+// когда пользователь ответит на текущий вопрос и перейдёт дальше, картинка
+// уже лежит в кеше — нет «вспышки» пустоты. Тема mapFind не предзагружается:
+// worldmap.json (~1.1 МБ) кешируется после первого вопроса темы навсегда (см.
+// loadWorldmapData выше); силуэты/флаги/гербы — отдельные файлы под каждый код.
+export function preloadNextQuestion(nextQuestion) {
+  if (!nextQuestion) return;
+  const { country, topicKey } = nextQuestion;
+  const cca2 = (country?.cca2 || "").toLowerCase();
+  if (!cca2) return;
+
+  // Темы, показывающие флаг: country (флаг → угадать страну), countryByCapital
+  // (текст столицы; флаг не показывается — НО на экране результата ответа
+  // показывается флаг? нет, результат тоже только текст). Поэтому реально
+  // предзагружаем только то, что попадёт в prompt текущей темы.
+  let path = null;
+  if (topicKey === "country") path = `./img/flags/${cca2}.svg`;
+  else if (topicKey === "coatOfArms") path = `./img/coats/${cca2}.svg`;
+  else if (topicKey === "silhouette") path = `data/silhouettes/${cca2}.svg`;
+  // mapFind — карта целиком кешируется после первого вопроса; ничего грузить не надо
+  // countryByCapital / nativeName / capital / population / area / language / currency /
+  //   density / religion — текстовые промпты, ассетов нет
+
+  if (path) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = path;
+  }
 }
 
 // Данные карты (готовые SVG-пути в экранных координатах) — грузятся лениво один раз

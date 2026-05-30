@@ -42,6 +42,7 @@ import {
   hideAnswerResult,
   updateTimer,
   renderQuestion,
+  preloadNextQuestion,
   markAnswer,
   renderResultSummary,
   renderGamesPlayed,
@@ -72,7 +73,7 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260572";
+} from "./ui.js?v=20260573";
 import { onUserChanged, signInWithGoogle, signOutUser,
          loadUserData, saveUserData } from "./firebase.js?v=20260539";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
@@ -700,6 +701,10 @@ function showQuestion(index) {
       handleAnswer(entry, buttons, correct);
     });
   }
+
+  // Предзагрузка ассета следующего вопроса — пока игрок думает, картинка
+  // уже летит в HTTP-кеш браузера. На последнем вопросе nextQ = undefined.
+  preloadNextQuestion(state.questions[index + 1]);
 
   const hintBtn = getHintButton();
   if (hintBtn) hintBtn.style.display = ""; // обычная партия — подсказка видна

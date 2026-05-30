@@ -1,9 +1,3 @@
-:root {
-  /* Фолбэк фона: показывается, если ротация (js/bg.js) не сработала
-     или картинка ещё не загрузилась. */
-  --earth-bg: url('../img/earth.jpg');
-}
-
 body {
   font-family: system-ui, "Segoe UI", Arial, sans-serif;
   margin: 0;
@@ -31,8 +25,8 @@ body::after {
   background-repeat: no-repeat;
   transition: opacity 1.5s ease;
 }
-body::before { background-image: var(--bg-0, var(--earth-bg)); opacity: 1; }
-body::after  { background-image: var(--bg-1, var(--earth-bg)); opacity: 0; }
+body::before { background-image: var(--bg-0); opacity: 1; }
+body::after  { background-image: var(--bg-1); opacity: 0; }
 /* Переключение видимого слоя — crossfade между ::before и ::after. */
 body.bg-toggle::before { opacity: 0; }
 body.bg-toggle::after  { opacity: 1; }
@@ -355,14 +349,23 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   transition: width .3s ease;
 }
 
+/* min-height + flex-центровка зарезервируют место под флаг/герб/силуэт ещё до
+   загрузки картинки → нет layout-shift'a при смене вопроса. 174px = 260 × 2/3
+   (типичный 3:2 флаг). */
 .flag-big {
   margin: 8px auto 20px;
   max-width: 260px;
+  min-height: 174px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 64px;
 }
 .flag-big img {
   width: 100%;
   height: auto;
+  max-height: 174px;
+  object-fit: contain;
   display: block;
   border: 1px solid #ddd;
 }
@@ -373,6 +376,11 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   display: block;
   margin: 0 auto;
   object-fit: contain;
+}
+/* Резерв высоты для герба в игре — без шифта при загрузке. info-screen использует
+   собственные размеры (.info-coa-img .coa-img), сюда не попадает. */
+.flag-big .coa-img {
+  min-height: 120px;
 }
 .flag-big.text-prompt {
   max-width: none;
@@ -391,6 +399,7 @@ h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
   max-width: 100%;
   width: auto;
   height: auto;
+  min-height: 120px;
   margin: 0 auto;
   object-fit: contain;
 }
