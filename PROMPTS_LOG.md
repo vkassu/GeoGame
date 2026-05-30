@@ -18,6 +18,47 @@
 
 ---
 
+## 2026-05-29 #47 | Синхронизация полного игрового состояния с Firestore
+
+**Цель:** Перевести в облако `achievements / inventory / dailyPrize / streak / dailyQuests` (раньше жили только в localStorage) — чтобы прогресс не терялся между устройствами под одним Google-аккаунтом.
+
+**Статус:** выполнен (live-проверка Firestore — на деплое)
+
+**Проверено в браузере:** локально — синтаксис и чистая загрузка (Firestore-записи гейтятся `if (state.user)`; в preview без auth — no-op, ошибок нет). **Live-цепочка (десктоп → Firestore Console → второе устройство) — только на gh-pages**, в preview непроверяемо (см. CLAUDE.md «Не проверяемо в preview»).
+
+**Автор промпта:** Cowork
+
+**Промпт:** добавить в Firestore поля achievements/inventory/dailyPrize/streak/dailyQuests; обновить `applyUserData` (cloud→local), `loadUserData` (миграция), и вставить вызовы `saveUserData` в `endGame()`, `persistAchievements()`, `claimDailyPrize()`, `claimQuestReward()`.
+
+**Результат / расхождения:**
+
+Реализовано по спеке, с правкой нескольких неверных деталей (как в прошлых задачах):
+
+- **`saveUserData(uid, data)`** в коде принимает **uid первым аргументом** (в существующих вызовах это `state.user.uid`). Псевдокод в спеке (`saveUserData({…})`) — без uid; везде использовал реальную сигнатуру.
+- **`applyUserData` живёт в `main.js`**, а не в firebase.js (как считала спека). Правил `main.js`.
+- **Функция называется `claimQuest`**, не `claimQuestReward`.
+- **`inventory` уже мигрировался и синкался** в endGame/claimDaily/claimQuest (спека утверждала, что в облаке «только xpTotal/best/games/lang» — это устарело). Под `loadUserData` починил параллельно стейлую заглушку дефолта `{hints,extraLives,chests}` → `{chests:0}` (поля удалены в #23).
+- **`initAchievements()` без аргументов** (как в спеке) затёр бы достижения в `{}`. Использовал `initAchievements(data.achievements)` — функция как раз для нормализации.
+- **В `applyUserData` использовал raw `localStorage.setItem` для новых полей** (а не `persistAchievements`/`persistDailyPrize`/…): иначе persistAchievements тут же отправил бы только что загруженные данные обратно в Firestore — лишний раунд-трип.
+
+Файлы:
+- **`js/firebase.js` `loadUserData`** — миграция расширена 5 полями (achievements, dailyPrize, streak, dailyQuests + поправлен инвентарь); коммент `Возвращает {…}` обновлён.
+- **`js/main.js` `applyUserData`** — обработка 5 новых полей с defensive-нормализацией (как в `loadFromStorage`), + `refreshMenuScreen()` в конце (бонус-строка, бейджи, профиль подтягиваются под облако).
+- **`js/main.js` `persistAchievements`** — добавлен `saveUserData(uid, {achievements, inventory})` под флагом `state.user`. Зовётся часто (per-correct-answer в handleAnswer ~25/партия, плюс из endGame/finishTraining/handleNewAchievementLevels) — Firestore SDK сам коалесцирует близкие записи, free-tier квот 20k/день хватит с большим запасом. Это сознательный выбор: лучше частые мелкие записи, чем потеря прогресса при крэше посреди игры.
+- **`js/main.js` `endGame`** — `saveUserData` дополнен `streak` и `dailyQuests`.
+- **`js/main.js` `claimDailyPrize`** — `saveUserData` дополнен `dailyPrize`.
+- **`js/main.js` `claimQuest`** — `saveUserData` дополнен `dailyQuests`.
+- **`CLAUDE.md`** — «Данные в облаке», «Сохранение», «Миграция» — переписаны под расширенный набор полей; явно отмечено, что merge:true даёт безопасное частичное обновление.
+- **Версия:** модули 20260571 → **20260572**; **`firebase.js` 20260538 → 20260539** (отдельный счётчик, как в CLAUDE.md «firebase.js импортируется в main.js с ?v=… — при правке поднимать версию в импорте»).
+
+**Не сделано в этом промпте (за рамками спеки):**
+- Lang в applyUserData не подтягивается из облака — функция игнорирует `data.lang`. Это пред-существующее ограничение, спека про lang в applyUserData не просила. Если важно — отдельной задачей.
+- Live-цепочка «десктоп → второй девайс» проверяется только на gh-pages — у меня нет реального OAuth/Firestore в preview.
+
+**Проверка (preview):** `js/main.js?v=20260572`, `js/firebase.js?v=20260539`, меню активно, xpTotal=0 на чистом профиле, консоль чистая, синтаксис всех файлов OK. Все `saveUserData` гейтятся `state.user` — без авторизации в preview они no-op, поэтому код не падает. **Тебе на gh-pages:** Шаг 6 из задания (десктоп → Firestore Console → iPhone/инкогнито).
+
+---
+
 ## 2026-05-29 #46 | Карта/Силуэт — первыми в порядке тем
 
 **Цель:** Поменять порядок `TOPICS` так, чтобы «Найди на карте» и «Силуэт» были первыми (а не последними).

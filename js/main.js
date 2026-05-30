@@ -20,7 +20,7 @@ import {
   hasReligion,
   hasSilhouette,
   hasMapFind,
-} from "./data.js?v=20260571";
+} from "./data.js?v=20260572";
 import {
   getLang,
   setLang,
@@ -29,7 +29,7 @@ import {
   TOPIC_LABELS,
   TOPIC_QUESTIONS,
   REGION_LABELS,
-} from "./i18n.js?v=20260571";
+} from "./i18n.js?v=20260572";
 import {
   showScreen,
   getPlayAgainButton,
@@ -72,16 +72,16 @@ import {
   hideAchievementPopup,
   showXpRewardPopup,
   hideXpRewardPopup,
-} from "./ui.js?v=20260571";
+} from "./ui.js?v=20260572";
 import { onUserChanged, signInWithGoogle, signOutUser,
-         loadUserData, saveUserData } from "./firebase.js?v=20260538";
+         loadUserData, saveUserData } from "./firebase.js?v=20260539";
 import { getLevelFromXP, getXPProgress, getUnlockedDifficulties, getUnlockLevel,
          initLevelUnlocks, getUnlocksForLevel }
-  from "./levels.js?v=20260571";
+  from "./levels.js?v=20260572";
 import { ACHIEVEMENT_DEFS, initAchievements, advanceAchievement,
          setAchievementProgress, getAchievementBonus, applyBonus }
-  from "./achievements.js?v=20260571";
-import { initBackgroundRotation } from "./bg.js?v=20260571";
+  from "./achievements.js?v=20260572";
+import { initBackgroundRotation } from "./bg.js?v=20260572";
 
 const QUESTION_TIME_SEC = 30;
 const XP_PER_CORRECT = 10;
@@ -898,6 +898,8 @@ function endGame() {
       bestXpPerGame: state.bestXpPerGame,
       gamesPlayed:  state.gamesPlayed,
       inventory:    state.inventory,
+      streak:       state.streak,       // #47: серия (обновляется в endGame)
+      dailyQuests:  state.dailyQuests,  // #47: прогресс заданий за партию
     }).catch(console.error);
   }
 
@@ -1257,7 +1259,18 @@ function persistStreak()     { localStorage.setItem(STORAGE.streak, JSON.stringi
 function persistDailyQuests(){ localStorage.setItem(STORAGE.dailyQuests, JSON.stringify(state.dailyQuests)); }
 function persistInventory()  { localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory)); }
 function persistXp()         { localStorage.setItem(STORAGE.xpTotal, String(state.xpTotal)); }
-function persistAchievements() { localStorage.setItem(STORAGE.achievements, JSON.stringify(state.achievements)); }
+function persistAchievements() {
+  localStorage.setItem(STORAGE.achievements, JSON.stringify(state.achievements));
+  // #47: cинхрон в облако. Зовут на каждое продвижение достижений (в т.ч. из
+  // handleAnswer на каждый правильный ответ) — Firestore SDK сам коалесцирует
+  // ближайшие записи; per-game писать ~25 раз — норм (<<квот free tier).
+  if (state.user) {
+    saveUserData(state.user.uid, {
+      achievements: state.achievements,
+      inventory:    state.inventory,
+    }).catch(console.error);
+  }
+}
 
 // Начислить награды за новые уровни достижений (сундуки), сохранить, зажечь бейдж
 // и поставить попапы в очередь (показываются по одному, по кнопке «Далее»).
@@ -1317,8 +1330,11 @@ function claimDailyPrize() {
   persistInventory();
   persistDailyPrize();
   if (state.user) {
-    saveUserData(state.user.uid, { xpTotal: state.xpTotal, inventory: state.inventory })
-      .catch(console.error);
+    saveUserData(state.user.uid, {
+      xpTotal:    state.xpTotal,
+      inventory:  state.inventory,
+      dailyPrize: state.dailyPrize, // #47: запомнить факт получения в облаке
+    }).catch(console.error);
   }
   startTasksTimer();      // перезапустить тикер для нового отсчёта
   renderTasksScreen();
@@ -1421,7 +1437,11 @@ function claimQuest(id) {
   persistInventory();
   persistDailyQuests();
   if (state.user) {
-    saveUserData(state.user.uid, { xpTotal: state.xpTotal, inventory: state.inventory }).catch(console.error);
+    saveUserData(state.user.uid, {
+      xpTotal:     state.xpTotal,
+      inventory:   state.inventory,
+      dailyQuests: state.dailyQuests, // #47: claimed=true должно дойти до облака
+    }).catch(console.error);
   }
   renderTasksScreen();
   refreshMenuScreen();
@@ -1644,6 +1664,33 @@ function applyUserData(data) {
   if (data.inventory && typeof data.inventory === "object") {
     state.inventory = { chests: Number(data.inventory.chests) || 0 };
   }
+  // #47: достижения / дейлик / стрик / задания — тянем из облака и нормализуем.
+  // Используем raw localStorage.setItem (не persistAchievements/persistStreak/…),
+  // иначе persistAchievements тут же запишет это обратно в Firestore — лишняя запись.
+  if (data.achievements && typeof data.achievements === "object") {
+    state.achievements = initAchievements(data.achievements);
+    localStorage.setItem(STORAGE.achievements, JSON.stringify(state.achievements));
+  }
+  if (data.dailyPrize && typeof data.dailyPrize === "object"
+      && typeof data.dailyPrize.lastClaimDate === "string") {
+    state.dailyPrize = { lastClaimDate: data.dailyPrize.lastClaimDate };
+    localStorage.setItem(STORAGE.dailyPrize, JSON.stringify(state.dailyPrize));
+  }
+  if (data.streak && typeof data.streak === "object") {
+    state.streak = {
+      count: Number(data.streak.count) || 0,
+      lastGameDate: typeof data.streak.lastGameDate === "string" ? data.streak.lastGameDate : "",
+      milestonesClaimedAt: Array.isArray(data.streak.milestonesClaimedAt) ? data.streak.milestonesClaimedAt : [],
+    };
+    localStorage.setItem(STORAGE.streak, JSON.stringify(state.streak));
+  }
+  if (data.dailyQuests && typeof data.dailyQuests === "object") {
+    state.dailyQuests = {
+      date: typeof data.dailyQuests.date === "string" ? data.dailyQuests.date : "",
+      quests: Array.isArray(data.dailyQuests.quests) ? data.dailyQuests.quests : [],
+    };
+    localStorage.setItem(STORAGE.dailyQuests, JSON.stringify(state.dailyQuests));
+  }
   // Обновить localStorage чтобы совпадал с облаком
   localStorage.setItem(STORAGE.xpTotal,      String(state.xpTotal));
   localStorage.setItem(STORAGE.bestXpPerGame, String(state.bestXpPerGame));
@@ -1653,6 +1700,7 @@ function applyUserData(data) {
   renderXpTotal(state.xpTotal);
   renderBestXp(state.bestXpPerGame);
   renderGamesPlayed(state.gamesPlayed);
+  refreshMenuScreen(); // #47: подтянуть профиль/бонус/бейджи под облачные данные
 }
 
 // Полный сброс прогресса («как в первый раз»):

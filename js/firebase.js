@@ -47,20 +47,27 @@ export function onUserChanged(callback) {
 
 // Загрузить данные пользователя.
 // localFallback — текущие данные из localStorage (для миграции нового пользователя).
-// Возвращает объект { xpTotal, bestXpPerGame, gamesPlayed, lang }.
+// Возвращает объект: { xpTotal, bestXpPerGame, gamesPlayed, lang, inventory,
+//   achievements, dailyPrize, streak, dailyQuests } — все поля cloud-документа.
 export async function loadUserData(uid, localFallback) {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
   if (snap.exists()) {
     return snap.data();
   }
-  // Первый вход — создать документ из локальных данных (миграция)
+  // Первый вход — создать документ из локальных данных (миграция). #47: дополнительно
+  // переносим достижения / дейлик / стрик / задания. Инвентарь — {chests:0} (поля
+  // hints/extraLives удалены в #23).
   const data = {
-    xpTotal: localFallback.xpTotal || 0,
+    xpTotal:       localFallback.xpTotal || 0,
     bestXpPerGame: localFallback.bestXpPerGame || 0,
-    gamesPlayed: localFallback.gamesPlayed || 0,
-    inventory: localFallback.inventory || { hints: 0, extraLives: 0, chests: 0 },
-    lang: localFallback.lang || "ru",
+    gamesPlayed:   localFallback.gamesPlayed || 0,
+    inventory:     localFallback.inventory || { chests: 0 },
+    lang:          localFallback.lang || "ru",
+    achievements:  localFallback.achievements || {},
+    dailyPrize:    localFallback.dailyPrize  || { lastClaimDate: "" },
+    streak:        localFallback.streak      || { count: 0, lastGameDate: "", milestonesClaimedAt: [] },
+    dailyQuests:   localFallback.dailyQuests || { date: "", quests: [] },
   };
   await setDoc(ref, data);
   return data;
